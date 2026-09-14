@@ -1,0 +1,204 @@
+# FitConnect Backend — Development Guidelines
+
+This document is the single source of truth for **where code goes** and
+**how it should be written** in this codebase. Follow it strictly so the
+project stays maintainable as more modules and contributors are added.
+
+---
+
+## 1. Core Principle
+
+> **Controller = Traffic Police. Service = Brain. Model = Messenger to DB.**
+
+Every module in `src/modules/<module>/` follows this same shape:
+
+```
+<module>.routes.js       → defines URL paths, maps them to controller functions
+<module>.controller.js   → reads request, calls service, sends response
+<module>.service.js      → ALL business logic, calculations, decisions live here
+<module>.model.js        → raw DB queries only (SQL / query-builder calls)
+<module>.prompts.js      → (only if module talks to an LLM) prompt templates
+```
+
+Never skip a layer. Never let a controller talk directly to the database.
+Never let a model file contain business logic (e.g. "if RP > 500 then...").
+
+---
+
+## 2. Where Does My Code Go? (Decision Table)
+
+| What you're writing | Goes in |
+|---|---|
+| A new API endpoint / URL path | `<module>.routes.js` |
+| Reading `req.body`/`req.params`, calling a service, sending `res.json()` | `<module>.controller.js` |
+| A calculation, rule, decision, or orchestration between services | `<module>.service.js` |
+| A raw SQL query / DB read-write | `<module>.model.js` |
+| An LLM prompt string or prompt-building function | `<module>.prompts.js` |
+| A value that might change later (thresholds, tags, API keys, sport lists) | `config/*.config.js` |
+| A function used by 2+ unrelated modules (date math, formatting, validation) | `utils/` |
+| Auth-checking, error-catching, logging every request | `middleware/` |
+| Anything both `plan` and `session` need (load-balancing, injury rules) | `modules/ruleEngine/` — **never duplicate this logic inside `plan` or `session`** |
+| Calling an external AI API | Always through `llm/llmClient.js` — never call the AI API directly from a service |
+| Sending a push notification | `modules/notifications/` — trigger it from the relevant service (e.g. `progress.service.js` calls `notifications.service.js` when a tier changes), never build FCM logic inline elsewhere |
+
+If you're unsure which module a piece of code belongs to, ask: **"Whose
+responsibility is this fact?"** RP-calculation belongs to `progress`, even if
+`session.service.js` is what triggers it — `session` should call
+`progress.service.js`, not calculate RP itself.
+
+---
+
+## 3. Module Structure Rules
+
+1. **One module = one folder under `src/modules/`.** Do not create a new
+   top-level module for something that's really a sub-concern of an
+   existing one (e.g. "streaks" is not its own module — it lives inside
+   `progress`).
+2. **Sub-modules** (like `social/feed`, `social/follow`) are only allowed
+   when the parent concept (`social`) is genuinely an umbrella over several
+   independent domains. Each sub-module still follows the same
+   controller/service/routes/model shape internally.
+3. **Every module owns its own `.model.js`.** Do not put all models in one
+   central `models/` folder — this caused the inconsistency we fixed
+   earlier. A module's model file only queries tables that belong to that
+   module's domain (e.g. `plan.model.js` never queries the `users` table
+   directly — it asks `userContext` or `auth` for that).
+4. **Cross-module data access happens through services, not models.** If
+   `diet.service.js` needs today's training load, it calls
+   `userContext.service.js` — it never imports `session.model.js` directly.
+
+---
+
+## 4. Naming Conventions
+
+- Files: `camelCase.type.js` → `loadTags.config.js`, `plan.service.js`
+- Functions: `camelCase`, verb-first → `calculateWeeklyLoad()`, `getUserStreak()`
+- Routes: `kebab-case`, versioned, plural nouns → `/api/v1/plans`, `/api/v1/user-context`
+- DB tables: `snake_case`, plural → `users`, `session_logs`, `rp_history`
+- Config constants: `SCREAMING_SNAKE_CASE` inside `.config.js` files
+
+---
+
+## 5. API Response Format (Non-Negotiable)
+
+Every controller must respond using `utils/responseFormatter.js`. Never
+send raw objects directly with `res.json()`.
+
+```js
+// success
+return sendSuccess(res, { plan }, "Plan generated successfully");
+
+// error
+return sendError(res, "INJURY_CONFLICT", "This exercise conflicts with a flagged injury", 400);
+```
+
+Standard shape:
+```json
+{ "success": true, "data": {}, "message": "" }
+{ "success": false, "error": { "code": "", "message": "" } }
+```
+
+---
+
+## 6. Error Handling
+
+- Never use `try/catch` silently swallowing errors inside a service.
+- Services throw custom errors; controllers catch and forward to
+  `next(err)`; `middleware/errorHandler.js` is the **only** place that
+  formats an error response.
+- Add a new error code to a shared error-codes list before inventing a new
+  string inline.
+
+---
+
+## 7. Rule Engine Usage (Critical Module)
+
+`ruleEngine.service.js` is the only place allowed to contain:
+- Sport → body-system load-tag mapping logic
+- Multi-sport conflict-avoidance rules (no same high-load tag 2 days running)
+- Injury → exercise-substitution logic
+
+`plan.service.js` and `session.service.js` **call into** ruleEngine — they
+never re-implement or copy any of this logic locally, even a "quick check."
+If a new sport is added, only `loadTags.config.js` changes.
+
+---
+
+## 8. AI / LLM Usage Rules
+
+1. All prompt text lives in the module's `.prompts.js` file — never inline
+   inside a service function.
+2. All actual API calls to the LLM go through `llm/llmClient.js`. This is
+   what lets us swap providers or add retry/rate-limit logic in one place.
+3. LLM output that affects safety (injury substitutions, load limits) must
+   always be validated against `ruleEngine` before being saved or shown to
+   the user — never trust raw LLM output for safety-critical decisions.
+4. Keep prompts short and structured for anything used inside the
+   real-time session-feedback loop — latency matters there.
+
+---
+
+## 9. Adding a New Module — Checklist
+
+When a new feature needs a new module, create:
+
+- [ ] `modules/<name>/<name>.routes.js`
+- [ ] `modules/<name>/<name>.controller.js`
+- [ ] `modules/<name>/<name>.service.js`
+- [ ] `modules/<name>/<name>.model.js`
+- [ ] `modules/<name>/<name>.prompts.js` (only if it calls an LLM)
+- [ ] Register the new routes in `routes/index.js`
+- [ ] Add any new config values to `config/`, never hardcode inside service
+- [ ] Update this file's module list in Section 10 if it's a permanent addition
+
+---
+
+## 10. Current Module List (keep updated)
+
+| Module | Responsibility |
+|---|---|
+| `auth` | Signup/login, JWT tokens |
+| `onboarding` | First-time profile setup |
+| `ruleEngine` | Load-balancing + injury-substitution logic (shared) |
+| `plan` | AI 7-day plan generation |
+| `session` | Real-time adaptive workout engine |
+| `diet` | AI diet/nutrition suggestions |
+| `userContext` | Shared per-user context object |
+| `progress` | Individual RP, streak, tier (no comparison) |
+| `profile` | Public profile display |
+| `social/feed` | Activity feed cards |
+| `social/follow` | Follow/follower graph |
+| `social/kudos` | One-tap acknowledgment |
+| `social/squad` | Private groups/crews |
+| `ranking` | Leaderboards, cross-sport normalization |
+| `verification` | Anti-cheat / genuine-activity checks |
+| `notifications` | Push notification triggers |
+| `wearable` | Wearable device adapters |
+| `coachMarketplace` | Future coach marketplace |
+
+---
+
+## 11. Things You Must Never Do
+
+- ❌ Never write a raw SQL query outside a `.model.js` file.
+- ❌ Never call `fetch()`/`axios()` to an LLM provider outside `llm/llmClient.js`.
+- ❌ Never duplicate load-balancing or injury logic outside `ruleEngine`.
+- ❌ Never put a new model in a central `models/` folder — it belongs inside its module.
+- ❌ Never let `ranking` or `social` modules write directly to `progress`'s tables — always go through `progress.service.js`.
+- ❌ Never hardcode a config value (thresholds, API keys, tag lists) inside a service file.
+- ❌ Never skip `responseFormatter.js` for API responses.
+
+---
+
+## 12. Git Commit Convention (Recommended)
+
+```
+<module>: short description
+
+feat(plan): add injury-substitution check before saving plan
+fix(session): correct latency issue in feedback loop
+chore(config): update tier thresholds
+```
+
+This makes it trivial to trace which module a change touched, which
+matters a lot once the team grows past 1-2 people.

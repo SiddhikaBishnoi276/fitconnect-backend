@@ -1,0 +1,1 @@
+// Validated environment configuration helper
