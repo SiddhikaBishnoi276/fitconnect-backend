@@ -32,7 +32,41 @@ const login = async (req, res, next) => {
   }
 };
 
+/**
+ * Controller handler for refreshing access token
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ */
+const refreshToken = async (req, res, next) => {
+  try {
+    const { refreshToken: token } = req.body;
+    const data = await authService.refreshAccessToken(token);
+    return sendSuccess(res, data, 'Token refreshed', 200);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * Controller handler for user logout
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ */
+const logout = async (req, res, next) => {
+  try {
+    const { refreshToken: token } = req.body;
+    await authService.logoutUser(token);
+    return sendSuccess(res, null, 'Logged out successfully', 200);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   signup,
   login,
+  refreshToken,
+  logout,
 };

@@ -181,10 +181,47 @@ const createDeviceToken = async (userId, refreshToken, deviceInfo = null, expire
   return result.rows[0];
 };
 
+/**
+ * Finds a valid (not expired) device token record by refresh token
+ * @param {string} refreshToken
+ * @param {import('pg').PoolClient} [client]
+ * @returns {Promise<object|null>}
+ */
+const findDeviceTokenByRefreshToken = async (refreshToken, client = null) => {
+  const executor = client || db;
+  const queryText = `
+    SELECT * FROM device_tokens
+    WHERE refresh_token = $1
+      AND (expires_at IS NULL OR expires_at > now())
+    ORDER BY created_at DESC
+    LIMIT 1;
+  `;
+  const result = await executor.query(queryText, [refreshToken]);
+  return result.rows[0] || null;
+};
+
+/**
+ * Deletes / invalidates a device / refresh token
+ * @param {string} refreshToken
+ * @param {import('pg').PoolClient} [client]
+ * @returns {Promise<number>} Number of rows deleted
+ */
+const deleteDeviceToken = async (refreshToken, client = null) => {
+  const executor = client || db;
+  const queryText = `
+    DELETE FROM device_tokens
+    WHERE refresh_token = $1;
+  `;
+  const result = await executor.query(queryText, [refreshToken]);
+  return result.rowCount;
+};
+
 module.exports = {
   findUserByEmail,
   createUser,
   addUserSports,
   addUserInjuries,
   createDeviceToken,
+  findDeviceTokenByRefreshToken,
+  deleteDeviceToken,
 };

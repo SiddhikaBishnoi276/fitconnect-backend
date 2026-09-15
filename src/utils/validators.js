@@ -60,8 +60,28 @@ const validateLoginInput = (body) => {
   return { isValid: true };
 };
 
+/**
+ * Validates refresh token payload
+ * @param {object} body
+ * @returns {{ isValid: boolean, error?: string }}
+ */
+const validateRefreshTokenInput = (body) => {
+  if (!body) {
+    return { isValid: false, error: 'Request body is required' };
+  }
+
+  const { refreshToken } = body;
+
+  if (!refreshToken || typeof refreshToken !== 'string' || refreshToken.trim().length === 0) {
+    return { isValid: false, error: 'refreshToken is required and must be a non-empty string' };
+  }
+
+  return { isValid: true };
+};
+
 module.exports = {
   isValidEmail,
   validateSignupInput,
   validateLoginInput,
+  validateRefreshTokenInput,
 };

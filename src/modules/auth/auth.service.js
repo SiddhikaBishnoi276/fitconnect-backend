@@ -150,8 +150,68 @@ const loginUser = async ({ email, password, deviceInfo = null }) => {
   };
 };
 
+/**
+ * Verifies a refresh token and generates a fresh access token
+ * @param {string} refreshToken
+ * @returns {Promise<{ accessToken: string }>}
+ */
+const refreshAccessToken = async (refreshToken) => {
+  if (!refreshToken || typeof refreshToken !== 'string') {
+    const error = new Error('Refresh token is required');
+    error.code = 'INVALID_REFRESH_TOKEN';
+    error.statusCode = 401;
+    throw error;
+  }
+
+  // 1. Check if refresh token exists in DB and is not expired
+  const tokenRecord = await authModel.findDeviceTokenByRefreshToken(refreshToken);
+  if (!tokenRecord) {
+    const error = new Error('Invalid or expired refresh token');
+    error.code = 'INVALID_REFRESH_TOKEN';
+    error.statusCode = 401;
+    throw error;
+  }
+
+  // 2. Verify JWT signature & expiration
+  let decoded;
+  try {
+    decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
+  } catch (err) {
+    const error = new Error('Invalid or expired refresh token');
+    error.code = 'INVALID_REFRESH_TOKEN';
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const userId = decoded.userId || tokenRecord.user_id;
+
+  // 3. Generate new access token (15m expiry)
+  const accessToken = jwt.sign(
+    { userId },
+    JWT_SECRET,
+    { expiresIn: '15m' }
+  );
+
+  return {
+    accessToken,
+  };
+};
+
+/**
+ * Invalidates a user's session / refresh token
+ * @param {string} refreshToken
+ * @returns {Promise<void>}
+ */
+const logoutUser = async (refreshToken) => {
+  if (refreshToken && typeof refreshToken === 'string') {
+    await authModel.deleteDeviceToken(refreshToken);
+  }
+};
+
 module.exports = {
   generateAuthTokens,
   registerUser,
   loginUser,
+  refreshAccessToken,
+  logoutUser,
 };
