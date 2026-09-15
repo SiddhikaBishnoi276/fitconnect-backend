@@ -86,8 +86,51 @@ const generateJSON = async (prompt, options = {}) => {
   }
 };
 
+/**
+ * Unified generate function for system + user prompts
+ * @param {string} systemPrompt
+ * @param {string} userPrompt
+ * @param {object} [options]
+ * @param {boolean} [options.expectJSON=false]
+ * @param {number} [options.timeoutMs]
+ * @returns {Promise<{ json?: any, text?: string }>}
+ */
+const generate = async (systemPrompt, userPrompt, options = {}) => {
+  const combinedPrompt = systemPrompt ? `${systemPrompt}\n\n${userPrompt}` : userPrompt;
+  
+  const callPromise = (async () => {
+    if (options.expectJSON) {
+      const json = await generateJSON(combinedPrompt, options);
+      return { json };
+    }
+    const text = await generateText(combinedPrompt, options);
+    return { text };
+  })();
+
+  if (options.timeoutMs && options.timeoutMs > 0) {
+    let timeoutHandle;
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutHandle = setTimeout(() => {
+        reject(new Error(`LLM call timed out after ${options.timeoutMs}ms`));
+      }, options.timeoutMs);
+    });
+    try {
+      const res = await Promise.race([callPromise, timeoutPromise]);
+      clearTimeout(timeoutHandle);
+      return res;
+    } catch (err) {
+      clearTimeout(timeoutHandle);
+      throw err;
+    }
+  }
+
+  return await callPromise;
+};
+
 module.exports = {
   isGeminiConfigured,
   generateText,
   generateJSON,
+  generate,
 };
+
