@@ -17,6 +17,52 @@ const findUserByEmail = async (email, client = null) => {
 };
 
 /**
+ * Finds a user by ID without password_hash and includes sports & injuries
+ * @param {string} userId
+ * @param {import('pg').PoolClient} [client]
+ * @returns {Promise<object|null>}
+ */
+const findUserById = async (userId, client = null) => {
+  const executor = client || db;
+  const userResult = await executor.query(
+    `SELECT 
+       id, name, email, phone, auth_provider, photo_url,
+       age, weight_kg, height_cm, gender, activity_level,
+       equipment, time_budget_minutes, preferred_days, goals,
+       diet_preference, regional_cuisine, rp_total, tier,
+       current_streak, longest_streak, privacy, created_at, updated_at
+     FROM users
+     WHERE id = $1;`,
+    [userId]
+  );
+
+  const user = userResult.rows[0];
+  if (!user) return null;
+
+  const sportsResult = await executor.query(
+    `SELECT us.sport_id, s.slug, s.name
+     FROM user_sports us
+     JOIN sports s ON us.sport_id = s.id
+     WHERE us.user_id = $1;`,
+    [userId]
+  );
+
+  const injuriesResult = await executor.query(
+    `SELECT id, body_part, condition, occurred_months_ago, recovery_status, notes, created_at
+     FROM user_injuries
+     WHERE user_id = $1
+     ORDER BY created_at DESC;`,
+    [userId]
+  );
+
+  return {
+    ...user,
+    sports: sportsResult.rows,
+    injuries: injuriesResult.rows,
+  };
+};
+
+/**
  * Creates a new user record in the database
  * @param {object} userData
  * @param {import('pg').PoolClient} [client]
@@ -218,6 +264,7 @@ const deleteDeviceToken = async (refreshToken, client = null) => {
 
 module.exports = {
   findUserByEmail,
+  findUserById,
   createUser,
   addUserSports,
   addUserInjuries,

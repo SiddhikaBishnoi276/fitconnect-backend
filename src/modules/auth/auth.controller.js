@@ -64,9 +64,26 @@ const logout = async (req, res, next) => {
   }
 };
 
+/**
+ * Controller handler for fetching current authenticated user profile
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ */
+const getMe = async (req, res, next) => {
+  try {
+    const userId = req.user?.id || req.user?.userId;
+    const user = await authService.getCurrentUser(userId);
+    return sendSuccess(res, user, 'User fetched successfully', 200);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   signup,
   login,
   refreshToken,
   logout,
+  getMe,
 };

@@ -33,6 +33,13 @@ router.post('/login', validateRequest(validateLoginInput), authController.login)
 router.post('/refresh-token', validateRequest(validateRefreshTokenInput), authController.refreshToken);
 
 /**
+ * @route   GET /api/v1/auth/me
+ * @desc    Get current authenticated user profile
+ * @access  Protected (Requires Bearer JWT in Authorization header)
+ */
+router.get('/me', authGuard, authController.getMe);
+
+/**
  * @route   POST /api/v1/auth/logout
  * @desc    Invalidate user session and refresh token
  * @access  Protected (Requires Bearer JWT in Authorization header)

@@ -208,10 +208,36 @@ const logoutUser = async (refreshToken) => {
   }
 };
 
+/**
+ * Fetches the currently authenticated user's profile
+ * @param {string} userId
+ * @returns {Promise<object>}
+ */
+const getCurrentUser = async (userId) => {
+  if (!userId) {
+    const error = new Error('User not found');
+    error.code = 'USER_NOT_FOUND';
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const user = await authModel.findUserById(userId);
+  if (!user) {
+    const error = new Error('User not found');
+    error.code = 'USER_NOT_FOUND';
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const { password_hash, ...sanitizedUser } = user;
+  return sanitizedUser;
+};
+
 module.exports = {
   generateAuthTokens,
   registerUser,
   loginUser,
   refreshAccessToken,
   logoutUser,
+  getCurrentUser,
 };

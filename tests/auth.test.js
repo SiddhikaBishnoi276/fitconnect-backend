@@ -82,26 +82,29 @@ describe('Auth Module Flow — Automated Test Suite', () => {
     refreshToken = response.body.data.refreshToken;
   });
 
-  // 3. Protected route access test with access token
-  test('3. Protected Route -> Fails without token (401), succeeds with valid access token', async () => {
-    // 3a. Unauthorized without token
+  // 3. Protected route access test with access token (GET /me)
+  test('3. GET /api/v1/auth/me -> Fails without token (401), succeeds with valid access token (200)', async () => {
+    // 3a. Case 1: Unauthorized without Authorization header
     const unauthorizedRes = await request(app)
-      .post('/api/v1/auth/logout')
-      .send({ refreshToken })
+      .get('/api/v1/auth/me')
       .expect(401);
 
     expect(unauthorizedRes.body.success).toBe(false);
     expect(unauthorizedRes.body.error.code).toBe('UNAUTHORIZED');
 
-    // 3b. Verify invalid token rejection
-    const invalidTokenRes = await request(app)
-      .post('/api/v1/auth/logout')
-      .set('Authorization', 'Bearer invalid_token_xyz')
-      .send({ refreshToken })
-      .expect(401);
+    // 3b. Case 2: Valid access token -> 200 + user data without password_hash
+    const authorizedRes = await request(app)
+      .get('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
 
-    expect(invalidTokenRes.body.success).toBe(false);
-    expect(invalidTokenRes.body.error.code).toBe('UNAUTHORIZED');
+    expect(authorizedRes.body.success).toBe(true);
+    expect(authorizedRes.body.message).toBe('User fetched successfully');
+    expect(authorizedRes.body.data).toBeDefined();
+    expect(authorizedRes.body.data.email).toBe(testUser.email.toLowerCase());
+    expect(authorizedRes.body.data.password_hash).toBeUndefined();
+    expect(authorizedRes.body.data.sports).toBeDefined();
+    expect(authorizedRes.body.data.injuries).toBeDefined();
   });
 
   // 4. Refresh-token se naya access token lo
