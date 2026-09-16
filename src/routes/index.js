@@ -8,10 +8,12 @@ const router = express.Router();
 
 const dietRoutes = require('../modules/diet/diet.routes');
 const homeRoutes = require('../modules/home/home.routes');
+const progressRoutes = require('../modules/progress/progress.routes');
 
 // Mount module routes
 router.use('/diet', dietRoutes);
 router.use('/home', homeRoutes);
+router.use('/progress', progressRoutes);
 // Register module routes
 router.use('/auth', authRoutes);
 router.use('/sports', sportsRoutes);
