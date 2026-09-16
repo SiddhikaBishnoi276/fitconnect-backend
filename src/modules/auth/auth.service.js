@@ -5,8 +5,8 @@ const db = require('../../config/db');
 const env = require('../../config/env.config');
 const authModel = require('./auth.model');
 
-const JWT_SECRET = env.JWT_SECRET || 'fitconnect_default_jwt_secret_key_2026';
-const JWT_REFRESH_SECRET = env.JWT_REFRESH_SECRET || 'fitconnect_default_jwt_refresh_secret_key_2026';
+const JWT_SECRET = env.JWT_SECRET;
+const JWT_REFRESH_SECRET = env.JWT_REFRESH_SECRET;
 
 /**
  * Generates Access and Refresh JWT tokens

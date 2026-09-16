@@ -2,7 +2,7 @@
 const jwt = require('jsonwebtoken');
 const env = require('../config/env.config');
 
-const JWT_SECRET = env.JWT_SECRET || 'fitconnect_default_jwt_secret_key_2026';
+const JWT_SECRET = env.JWT_SECRET;
 
 /**
  * Middleware to authenticate requests via Bearer JWT token in Authorization header
