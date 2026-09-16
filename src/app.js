@@ -4,6 +4,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const routes = require('./routes');
 const planRoutes = require('./modules/plan/plan.routes');
+const sessionRoutes = require('./modules/session/session.routes');
 const errorHandler = require('./middleware/errorHandler');
 const rateLimiter = require('./middleware/rateLimiter');
 
@@ -21,9 +22,10 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// API Routes (supports both /api/v1/plans and /plans directly)
+// API Routes (supports both /api/v1/sessions and /sessions directly)
 app.use('/api/v1', routes);
 app.use('/plans', planRoutes);
+app.use('/sessions', sessionRoutes);
 
 // Global Error Handler
 app.use(errorHandler);
