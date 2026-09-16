@@ -175,6 +175,8 @@ When a new feature needs a new module, create:
 | `notifications` | Push notification triggers |
 | `wearable` | Wearable device adapters |
 | `coachMarketplace` | Future coach marketplace |
+| `sports` | Master sports reference & lookup |
+| `exercises` | Master exercises library & lookup |
 
 ---
 
