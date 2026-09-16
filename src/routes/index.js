@@ -22,9 +22,12 @@ router.use('/sports', sportsRoutes);
 router.use('/exercises', exercisesRoutes);
 const planRoutes = require('../modules/plan/plan.routes');
 const sessionRoutes = require('../modules/session/session.routes');
+const notificationsRoutes = require('../modules/notifications/notifications.routes');
 
 // Module routes registration
 router.use('/plans', planRoutes);
 router.use('/sessions', sessionRoutes);
+router.use('/notifications', notificationsRoutes);
 
 module.exports = router;
+
