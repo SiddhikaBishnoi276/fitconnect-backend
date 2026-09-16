@@ -100,7 +100,7 @@ async function generateDietPlan(userId) {
   try {
     const res = await llmClient.generate(system, userPrompt, {
       expectJSON: true,
-      timeoutMs: 8000
+      timeoutMs: 25000
     });
     if (validatePlan(res?.json)) {
       aiResponse = res.json;
@@ -114,7 +114,7 @@ async function generateDietPlan(userId) {
     try {
       const retryRes = await llmClient.generate(system, userPrompt, {
         expectJSON: true,
-        timeoutMs: 8000
+        timeoutMs: 25000
       });
       if (validatePlan(retryRes?.json)) {
         aiResponse = retryRes.json;
@@ -196,7 +196,7 @@ async function getMealDetail(mealId) {
   try {
     const result = await llmClient.generate(system, user, {
       expectJSON: true,
-      timeoutMs: 5000
+      timeoutMs: 15000
     });
 
     if (result?.json && validateElaboration(result.json)) {

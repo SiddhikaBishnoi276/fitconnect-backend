@@ -14,11 +14,13 @@ if (isGeminiConfigured()) {
   genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
 }
 
+const FALLBACK_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-flash-latest'];
+
 /**
- * Generate plain text response from Gemini
+ * Generate plain text response from Gemini with fallback support
  * @param {string} prompt
  * @param {object} [options]
- * @param {string} [options.modelName="gemini-1.5-flash"]
+ * @param {string} [options.modelName]
  * @param {number} [options.temperature=0.7]
  * @returns {Promise<string>}
  */
@@ -27,31 +29,37 @@ const generateText = async (prompt, options = {}) => {
     throw new Error('GEMINI_API_KEY is not configured in .env');
   }
 
-  const modelName = options.modelName || 'gemini-1.5-flash';
-  const model = genAI.getGenerativeModel({
-    model: modelName,
-    generationConfig: {
-      temperature: options.temperature ?? 0.7,
-      maxOutputTokens: options.maxOutputTokens ?? 2048,
-    },
-  });
+  const modelCandidates = options.modelName ? [options.modelName, ...FALLBACK_MODELS] : FALLBACK_MODELS;
+  let lastError = null;
 
-  try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text();
-  } catch (error) {
-    console.error(`❌ [Gemini Error - ${modelName}]:`, error.message);
-    throw error;
+  for (const modelName of modelCandidates) {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        generationConfig: {
+          temperature: options.temperature ?? 0.7,
+          maxOutputTokens: options.maxOutputTokens ?? 2048,
+        },
+      });
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      return response.text();
+    } catch (error) {
+      lastError = error;
+      console.warn(`⚠️ [Gemini Fallback - ${modelName} failed]: ${error.message}. Trying next candidate if available...`);
+    }
   }
+
+  console.error('❌ [Gemini Error - All candidates failed]:', lastError?.message);
+  throw lastError;
 };
 
 /**
- * Generate structured JSON response from Gemini
+ * Generate structured JSON response from Gemini with fallback support
  * Ideal for structured workout plans, diets, evaluations
  * @param {string} prompt
  * @param {object} [options]
- * @param {string} [options.modelName="gemini-1.5-flash"]
+ * @param {string} [options.modelName]
  * @param {object} [options.schema]
  * @returns {Promise<any>}
  */
@@ -60,7 +68,9 @@ const generateJSON = async (prompt, options = {}) => {
     throw new Error('GEMINI_API_KEY is not configured in .env');
   }
 
-  const modelName = options.modelName || 'gemini-1.5-flash';
+  const modelCandidates = options.modelName ? [options.modelName, ...FALLBACK_MODELS] : FALLBACK_MODELS;
+  let lastError = null;
+
   const generationConfig = {
     responseMimeType: 'application/json',
     temperature: options.temperature ?? 0.4,
@@ -70,20 +80,25 @@ const generateJSON = async (prompt, options = {}) => {
     generationConfig.responseSchema = options.schema;
   }
 
-  const model = genAI.getGenerativeModel({
-    model: modelName,
-    generationConfig,
-  });
+  for (const modelName of modelCandidates) {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        generationConfig,
+      });
 
-  try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-    return JSON.parse(text);
-  } catch (error) {
-    console.error(`❌ [Gemini JSON Error - ${modelName}]:`, error.message);
-    throw error;
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+      return JSON.parse(text);
+    } catch (error) {
+      lastError = error;
+      console.warn(`⚠️ [Gemini JSON Fallback - ${modelName} failed]: ${error.message}. Trying next candidate if available...`);
+    }
   }
+
+  console.error('❌ [Gemini JSON Error - All candidates failed]:', lastError?.message);
+  throw lastError;
 };
 
 /**
