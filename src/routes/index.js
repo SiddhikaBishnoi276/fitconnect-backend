@@ -20,5 +20,11 @@ router.use('/auth', authRoutes);
 router.use('/profile', profileRoutes);
 router.use('/sports', sportsRoutes);
 router.use('/exercises', exercisesRoutes);
+const planRoutes = require('../modules/plan/plan.routes');
+const sessionRoutes = require('../modules/session/session.routes');
+
+// Module routes registration
+router.use('/plans', planRoutes);
+router.use('/sessions', sessionRoutes);
 
 module.exports = router;
