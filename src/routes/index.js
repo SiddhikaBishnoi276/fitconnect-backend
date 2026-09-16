@@ -2,6 +2,9 @@
 const express = require('express');
 const router = express.Router();
 
-// Module route imports will be registered here
+const planRoutes = require('../modules/plan/plan.routes');
+
+// Module routes registration
+router.use('/plans', planRoutes);
 
 module.exports = router;

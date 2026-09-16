@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const routes = require('./routes');
+const planRoutes = require('./modules/plan/plan.routes');
 const errorHandler = require('./middleware/errorHandler');
 const rateLimiter = require('./middleware/rateLimiter');
 
@@ -20,8 +21,9 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// API Routes
+// API Routes (supports both /api/v1/plans and /plans directly)
 app.use('/api/v1', routes);
+app.use('/plans', planRoutes);
 
 // Global Error Handler
 app.use(errorHandler);
