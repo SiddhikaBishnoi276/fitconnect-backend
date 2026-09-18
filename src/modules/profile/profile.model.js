@@ -251,6 +251,9 @@ const getUserPersonalRecords = async (userId, sportId = null, client = null) => 
       p.value,
       p.previous_best,
       p.created_at,
+      p.genuine_votes,
+      p.flag_votes,
+      p.verification_status AS original_verification_status,
       e.name AS exercise_name,
       e.sport_id
     FROM prs p
@@ -260,7 +263,70 @@ const getUserPersonalRecords = async (userId, sportId = null, client = null) => 
   `;
 
   const result = await executor.query(queryText, params);
-  return result.rows;
+  
+  // Override verification status dynamically at the application layer
+  return result.rows.map(row => {
+    let customStatus = 'unverified';
+    if (row.genuine_votes > row.flag_votes) {
+      customStatus = 'genuine';
+    } else if (row.flag_votes > row.genuine_votes) {
+      customStatus = 'disputed';
+    }
+    
+    return {
+      ...row,
+      verification_status: customStatus
+    };
+  });
+};
+
+/**
+ * Creates a new personal record for the user. Optionally creates a post.
+ * @param {string} userId 
+ * @param {string} exerciseId 
+ * @param {string} metric 
+ * @param {number} value 
+ * @param {import('pg').PoolClient} [client]
+ * @returns {Promise<object>}
+ */
+const createPersonalRecord = async (userId, exerciseId, metric, value, client = null) => {
+  const isExternalClient = !!client;
+  const activeClient = isExternalClient ? client : await db.getClient();
+  try {
+    if (!isExternalClient) await activeClient.query('BEGIN');
+
+    // Find previous best to populate previous_best
+    const prevBestRes = await activeClient.query(
+      `SELECT value FROM prs WHERE user_id = $1 AND exercise_id = $2 AND metric = $3 ORDER BY value DESC LIMIT 1;`,
+      [userId, exerciseId, metric]
+    );
+    const previousBest = prevBestRes.rows.length > 0 ? prevBestRes.rows[0].value : null;
+
+    const prRes = await activeClient.query(
+      `INSERT INTO prs (user_id, exercise_id, metric, value, previous_best)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *;`,
+      [userId, exerciseId, metric, value, previousBest]
+    );
+    const pr = prRes.rows[0];
+
+    // Create a post of type 'pr'
+    await activeClient.query(
+      `INSERT INTO posts (user_id, type, caption, pr_id)
+       VALUES ($1, 'pr', 'New Personal Record!', $2);`,
+      [userId, pr.id]
+    );
+
+    if (!isExternalClient) await activeClient.query('COMMIT');
+
+    pr.verification_status = 'unverified';
+    return pr;
+  } catch (error) {
+    if (!isExternalClient) await activeClient.query('ROLLBACK');
+    throw error;
+  } finally {
+    if (!isExternalClient) activeClient.release();
+  }
 };
 
 module.exports = {
@@ -273,4 +339,5 @@ module.exports = {
   getUserPreferences,
   updateUserPreferences,
   getUserPersonalRecords,
+  createPersonalRecord,
 };

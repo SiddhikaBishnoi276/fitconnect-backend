@@ -22,9 +22,13 @@ router.use('/sports', sportsRoutes);
 router.use('/exercises', exercisesRoutes);
 const planRoutes = require('../modules/plan/plan.routes');
 const sessionRoutes = require('../modules/session/session.routes');
+const verificationRoutes = require('../modules/verification/verification.routes');
+const rankingRoutes = require('../modules/ranking/ranking.routes');
 
 // Module routes registration
 router.use('/plans', planRoutes);
 router.use('/sessions', sessionRoutes);
+router.use('/social/verification', verificationRoutes);
+router.use('/ranking', rankingRoutes);
 
 module.exports = router;
