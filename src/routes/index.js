@@ -23,10 +23,13 @@ router.use('/exercises', exercisesRoutes);
 const planRoutes = require('../modules/plan/plan.routes');
 const sessionRoutes = require('../modules/session/session.routes');
 const followRoutes = require('../modules/follow/follow.routes');
+const feedRoutes = require('../modules/feed/feed.routes');
 
 // Module routes registration
 router.use('/plans', planRoutes);
 router.use('/sessions', sessionRoutes);
 router.use('/', followRoutes);
+router.use('/', feedRoutes);
 
 module.exports = router;
+
