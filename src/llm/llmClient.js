@@ -14,7 +14,7 @@ if (isGeminiConfigured()) {
   genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
 }
 
-const FALLBACK_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-flash-latest'];
+const FALLBACK_MODELS = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
 
 /**
  * Generate plain text response from Gemini with fallback support
