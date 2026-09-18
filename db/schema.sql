@@ -83,6 +83,7 @@ CREATE TABLE sports (
 
 CREATE TABLE users (
   id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  username              TEXT UNIQUE,
   name                  TEXT NOT NULL,
   email                 TEXT UNIQUE NOT NULL,
   phone                 TEXT,
@@ -115,6 +116,7 @@ CREATE TABLE users (
 );
 
 CREATE INDEX idx_users_leaderboard ON users (tier, rp_total DESC);
+CREATE INDEX idx_users_tier_activity ON users (tier, activity_level);
 
 -- --- user_sports ------------------------------------------------------------
 -- Every sport a user selects has EQUAL priority — no anchor/primary sport
@@ -125,6 +127,9 @@ CREATE TABLE user_sports (
   sport_id  INT  NOT NULL REFERENCES sports(id),
   PRIMARY KEY (user_id, sport_id)
 );
+
+CREATE INDEX idx_user_sports_user ON user_sports (user_id);
+CREATE INDEX idx_user_sports_sport ON user_sports (sport_id);
 
 -- --- user_injuries -----------------------------------------------------------
 
