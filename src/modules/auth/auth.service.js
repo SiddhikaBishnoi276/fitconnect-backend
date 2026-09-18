@@ -17,7 +17,7 @@ const generateAuthTokens = (userId) => {
   const accessToken = jwt.sign(
     { userId },
     JWT_SECRET,
-    { expiresIn: '15m' }
+    { expiresIn: env.JWT_EXPIRES_IN || '7d' }
   );
 
   const refreshToken = jwt.sign(
@@ -198,7 +198,7 @@ const refreshAccessToken = async (refreshToken) => {
   const accessToken = jwt.sign(
     { userId },
     JWT_SECRET,
-    { expiresIn: '15m' }
+    { expiresIn: env.JWT_EXPIRES_IN || '7d' }
   );
 
   return {

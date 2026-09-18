@@ -129,7 +129,8 @@ const computeSessionExerciseList = (session, planDayExercises, feedbackRowsSoFar
  * POST /sessions - Pre-session check-in & start session
  */
 const createSession = async (userId, payload) => {
-  const { plan_day_id, sleep_quality, soreness, energy, new_discomfort_present, new_discomfort_body_part } = payload;
+  const plan_day_id = payload.plan_day_id || payload.planDayId;
+  const { sleep_quality, soreness, energy, new_discomfort_present, new_discomfort_body_part } = payload;
 
   if (!plan_day_id) {
     const err = new Error('plan_day_id is required');
