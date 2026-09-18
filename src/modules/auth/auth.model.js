@@ -72,6 +72,7 @@ const createUser = async (userData, client = null) => {
   const executor = client || db;
   const {
     name,
+    username,
     email,
     password_hash,
     phone = null,
@@ -93,7 +94,7 @@ const createUser = async (userData, client = null) => {
 
   const queryText = `
     INSERT INTO users (
-      name, email, password_hash, phone, auth_provider, photo_url,
+      name, username, email, password_hash, phone, auth_provider, photo_url,
       age, weight_kg, height_cm, gender, activity_level,
       equipment, time_budget_minutes, preferred_days, goals,
       diet_preference, regional_cuisine, privacy
@@ -101,12 +102,13 @@ const createUser = async (userData, client = null) => {
       $1, $2, $3, $4, $5, $6,
       $7, $8, $9, $10, $11,
       $12, $13, $14, $15,
-      $16, $17, $18
+      $16, $17, $18, $19
     ) RETURNING *;
   `;
 
   const values = [
     name.trim(),
+    username.toLowerCase().trim(),
     email.toLowerCase().trim(),
     password_hash,
     phone,
