@@ -251,9 +251,6 @@ const getUserPersonalRecords = async (userId, sportId = null, client = null) => 
       p.value,
       p.previous_best,
       p.created_at,
-      p.genuine_votes,
-      p.flag_votes,
-      p.verification_status AS original_verification_status,
       e.name AS exercise_name,
       e.sport_id
     FROM prs p
@@ -263,21 +260,7 @@ const getUserPersonalRecords = async (userId, sportId = null, client = null) => 
   `;
 
   const result = await executor.query(queryText, params);
-
-  // Override verification status dynamically at the application layer
-  return result.rows.map(row => {
-    let customStatus = 'unverified';
-    if (row.genuine_votes > row.flag_votes) {
-      customStatus = 'genuine';
-    } else if (row.flag_votes > row.genuine_votes) {
-      customStatus = 'disputed';
-    }
-
-    return {
-      ...row,
-      verification_status: customStatus
-    };
-  });
+  return result.rows;
 };
 
 /**
@@ -310,16 +293,8 @@ const createPersonalRecord = async (userId, exerciseId, metric, value, client = 
     );
     const pr = prRes.rows[0];
 
-    // Create a post of type 'pr'
-    await activeClient.query(
-      `INSERT INTO posts (user_id, type, caption, pr_id)
-       VALUES ($1, 'pr', 'New Personal Record!', $2);`,
-      [userId, pr.id]
-    );
-
     if (!isExternalClient) await activeClient.query('COMMIT');
 
-    pr.verification_status = 'unverified';
     return pr;
   } catch (error) {
     if (!isExternalClient) await activeClient.query('ROLLBACK');

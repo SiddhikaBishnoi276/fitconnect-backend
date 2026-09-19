@@ -368,9 +368,31 @@ const completeSession = async (userId, sessionId, payload) => {
     fullyCompleted,
   });
 
-  // PR Detection: Removed auto-PR insertion (PRs are user-managed via Profile per sports)
+  // PR Detection
   const newPrs = [];
-
+  for (const fb of feedbackRows) {
+    if (fb.feedback !== 'skipped' && fb.actual_weight_kg !== null && fb.actual_weight_kg !== undefined) {
+      const metric = '1rm_kg'; // standardizing on 1rm_kg for weight-based PRs
+      const currentPrValue = await sessionModel.getPersonalRecord(userId, fb.exercise_id, metric);
+      
+      if (currentPrValue === null || fb.actual_weight_kg > currentPrValue) {
+        const newPr = await sessionModel.insertPersonalRecord({
+          userId,
+          exerciseId: fb.exercise_id,
+          metric,
+          value: fb.actual_weight_kg,
+          previousBest: currentPrValue,
+          sessionId
+        });
+        newPrs.push({
+          exercise_id: fb.exercise_id,
+          metric,
+          value: fb.actual_weight_kg,
+          previous_best: currentPrValue
+        });
+      }
+    }
+  }
   // RP & Streak calculation
   let rpAwarded = 0;
   let newCurrentStreak = 0;

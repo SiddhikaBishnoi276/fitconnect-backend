@@ -51,7 +51,6 @@ const getUserPRs = async (userId, client = null) => {
       prs.metric, 
       prs.value, 
       prs.previous_best, 
-      prs.verification_status, 
       prs.created_at,
       exercises.name AS exercise_name, 
       exercises.sport_id

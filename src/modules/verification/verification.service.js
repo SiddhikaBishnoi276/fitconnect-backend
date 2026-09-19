@@ -28,7 +28,7 @@ const castVote = async (prId, voterId, vote) => {
   if (!prId || typeof prId !== 'string') {
     throw createError('Valid prId is required', 'VALIDATION_ERROR', 400);
   }
-  
+
   if (!VALID_VOTES.includes(vote)) {
     throw createError(`Invalid vote "${vote}". Allowed values: ${VALID_VOTES.join(', ')}`, 'VALIDATION_ERROR', 400);
   }
