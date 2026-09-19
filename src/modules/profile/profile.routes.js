@@ -40,4 +40,11 @@ router.patch('/preferences', authGuard, profileController.updatePreferences);
  */
 router.get('/records', authGuard, profileController.getRecords);
 
+/**
+ * @route   GET /api/v1/profile/:userId
+ * @desc    Get public profile of another user
+ * @access  Protected
+ */
+router.get('/:userId', authGuard, profileController.getUserProfile);
+
 module.exports = router;

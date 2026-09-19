@@ -194,9 +194,26 @@ async function getSessionDetailsForDraft(sessionId, userId) {
   return result.rows[0] || null;
 }
 
+/**
+ * Deletes a post from the database if owned by the requesting user.
+ * @param {string|number} postId
+ * @param {string|number} userId
+ * @returns {Promise<string|number|null>} Deleted row's id, or null if nothing was deleted
+ */
+async function deletePost(postId, userId) {
+  const text = `
+    DELETE FROM posts
+    WHERE id = $1 AND user_id = $2
+    RETURNING id
+  `;
+  const result = await db.query(text, [postId, userId]);
+  return result.rows[0]?.id || null;
+}
+
 module.exports = {
   createPost,
   getPostById,
+  deletePost,
   getGlobalFeed,
   getFollowingFeed,
   getPostsByUser,

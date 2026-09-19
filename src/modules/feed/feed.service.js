@@ -145,10 +145,25 @@ async function unlikePost(postId, userId) {
   return { liked: false };
 }
 
+/**
+ * Deletes a post if owned by the user.
+ * @param {string|number} postId
+ * @param {string|number} userId
+ * @returns {Promise<{ deleted: boolean }>}
+ */
+async function deletePost(postId, userId) {
+  const deletedId = await feedModel.deletePost(postId, userId);
+  if (!deletedId) {
+    throw new Error('POST_NOT_FOUND_OR_NOT_OWNER');
+  }
+  return { deleted: true };
+}
+
 module.exports = {
   generateDraftCaption,
   createPost,
   getFeed,
   likePost,
   unlikePost,
+  deletePost,
 };

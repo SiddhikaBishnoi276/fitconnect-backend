@@ -27,13 +27,13 @@ const getUserProfileSummary = async (userId, client = null) => {
 const getUserSports = async (userId, client = null) => {
   const executor = client || db;
   const result = await executor.query(
-    `SELECT us.sport_id, s.slug, s.name
+    `SELECT s.id, us.sport_id, s.slug, s.name
      FROM user_sports us
      JOIN sports s ON us.sport_id = s.id
      WHERE us.user_id = $1;`,
     [userId]
   );
-  return result.rows;
+  return result.rows || [];
 };
 
 /**
@@ -263,6 +263,24 @@ const getUserPersonalRecords = async (userId, sportId = null, client = null) => 
   return result.rows;
 };
 
+/**
+ * Fetches public profile information for a user.
+ * Deliberately excludes sensitive fields (email, age, weight_kg, height_cm).
+ * @param {string|number} userId
+ * @param {import('pg').PoolClient} [client]
+ * @returns {Promise<object|null>}
+ */
+const getPublicProfile = async (userId, client = null) => {
+  const executor = client || db;
+  const result = await executor.query(
+    `SELECT id, name, username, photo_url, tier, current_streak, longest_streak, rp_total
+     FROM users
+     WHERE id = $1;`,
+    [userId]
+  );
+  return result.rows[0] || null;
+};
+
 module.exports = {
   getUserProfileSummary,
   getUserSports,
@@ -273,4 +291,5 @@ module.exports = {
   getUserPreferences,
   updateUserPreferences,
   getUserPersonalRecords,
+  getPublicProfile,
 };

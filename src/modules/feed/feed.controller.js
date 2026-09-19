@@ -89,10 +89,27 @@ async function unlike(req, res, next) {
   }
 }
 
+/**
+ * Deletes a post.
+ */
+async function remove(req, res, next) {
+  try {
+    const result = await feedService.deletePost(req.params.postId, req.user.id);
+    return sendSuccess(res, result);
+  } catch (err) {
+    if (err.message === 'POST_NOT_FOUND_OR_NOT_OWNER') {
+      return sendError(res, 'POST_NOT_FOUND_OR_NOT_OWNER', 
+        'Post not found or you do not have permission to delete it', 404);
+    }
+    next(err);
+  }
+}
+
 module.exports = {
   draftPost,
   create,
   getFeed,
   like,
   unlike,
+  remove,
 };
