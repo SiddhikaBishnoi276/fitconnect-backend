@@ -117,6 +117,7 @@ CREATE TABLE users (
 
 CREATE INDEX idx_users_leaderboard ON users (tier, rp_total DESC);
 CREATE INDEX idx_users_tier_activity ON users (tier, activity_level);
+CREATE INDEX idx_users_username_lower ON users (LOWER(username));
 
 -- --- user_sports ------------------------------------------------------------
 -- Every sport a user selects has EQUAL priority — no anchor/primary sport
