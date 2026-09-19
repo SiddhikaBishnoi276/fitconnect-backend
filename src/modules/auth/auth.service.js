@@ -90,10 +90,19 @@ const registerUser = async ({
 
     // 4. Exclude password_hash from the returned user object
     const { password_hash, ...sanitizedUser } = createdUser;
+    
+    // Generate auth tokens and create device token
+    const { accessToken, refreshToken, expiresAt } = generateAuthTokens(createdUser.id);
+    await authModel.createDeviceToken(createdUser.id, refreshToken, otherProps.deviceInfo || null, expiresAt);
+
     return {
-      ...sanitizedUser,
-      sports: attachedSports,
-      injuries: attachedInjuries,
+      accessToken,
+      refreshToken,
+      user: {
+        ...sanitizedUser,
+        sports: attachedSports,
+        injuries: attachedInjuries,
+      },
     };
   } catch (err) {
     await client.query('ROLLBACK');

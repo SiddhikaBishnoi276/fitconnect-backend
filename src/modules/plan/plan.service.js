@@ -216,14 +216,8 @@ const regeneratePlan = async (userId, updatedSettings = null) => {
  * @returns {Promise<object|null>}
  */
 const getCurrentPlan = async (userId) => {
-  let activePlan = await planModel.getActivePlanWithDetails(userId);
-
-  // If no plan exists for user yet, auto-generate one!
-  if (!activePlan) {
-    activePlan = await generatePlan(userId);
-  }
-
-  return activePlan;
+  const activePlan = await planModel.getActivePlanWithDetails(userId);
+  return activePlan || null; // Return null so frontend can show "Generate My 7-Day Plan" button
 };
 
 /**
@@ -244,7 +238,10 @@ const getCurrentPlanDay = async (userId, dayIndex) => {
   // Ensure an active plan exists
   let activePlan = await planModel.getActivePlanWithDetails(userId);
   if (!activePlan) {
-    activePlan = await generatePlan(userId);
+    const error = new Error('No active workout plan found for user.');
+    error.statusCode = 404;
+    error.code = 'NOT_FOUND';
+    throw error;
   }
 
   const dayDetails = await planModel.getActivePlanDayDetails(userId, numericIndex);
