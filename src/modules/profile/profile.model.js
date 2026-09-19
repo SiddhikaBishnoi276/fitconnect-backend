@@ -263,7 +263,7 @@ const getUserPersonalRecords = async (userId, sportId = null, client = null) => 
   `;
 
   const result = await executor.query(queryText, params);
-  
+
   // Override verification status dynamically at the application layer
   return result.rows.map(row => {
     let customStatus = 'unverified';
@@ -272,7 +272,7 @@ const getUserPersonalRecords = async (userId, sportId = null, client = null) => 
     } else if (row.flag_votes > row.genuine_votes) {
       customStatus = 'disputed';
     }
-    
+
     return {
       ...row,
       verification_status: customStatus
