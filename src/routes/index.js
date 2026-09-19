@@ -17,18 +17,24 @@ router.use('/home', homeRoutes);
 router.use('/progress', progressRoutes);
 // Register module routes
 router.use('/auth', authRoutes);
-router.use('/profile', profileRoutes);
+rout
+er.use('/profile', profileRoutes);
 router.use('/sports', sportsRoutes);
 router.use('/exercises', exercisesRoutes);
 const planRoutes = require('../modules/plan/plan.routes');
 const sessionRoutes = require('../modules/session/session.routes');
 const verificationRoutes = require('../modules/verification/verification.routes');
 const rankingRoutes = require('../modules/ranking/ranking.routes');
+const followRoutes = require('../modules/follow/follow.routes');
+const feedRoutes = require('../modules/feed/feed.routes');
 
 // Module routes registration
 router.use('/plans', planRoutes);
 router.use('/sessions', sessionRoutes);
 router.use('/social/verification', verificationRoutes);
 router.use('/ranking', rankingRoutes);
+router.use('/', followRoutes);
+router.use('/', feedRoutes);
 
 module.exports = router;
+

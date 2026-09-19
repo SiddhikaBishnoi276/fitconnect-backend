@@ -47,4 +47,11 @@ router.get('/records', authGuard, profileController.getRecords);
  */
 router.post('/records', authGuard, profileController.addRecord);
 
+/**
+ * @route   GET /api/v1/profile/:userId
+ * @desc    Get public profile of another user
+ * @access  Protected
+ */
+router.get('/:userId', authGuard, profileController.getUserProfile);
+
 module.exports = router;

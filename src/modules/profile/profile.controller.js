@@ -1,14 +1,16 @@
 // Profile controller: handles public athlete profile view, PR updates, and bio data
 const profileService = require('./profile.service');
-const { sendSuccess } = require('../../utils/responseFormatter');
+const { sendSuccess, sendError } = require('../../utils/responseFormatter');
 
 /**
- * Get profile header and sports for current authenticated user
+ * Get profile header, sports, and posts for current authenticated user
  * @route GET /api/v1/profile/me
  */
 const getMe = async (req, res, next) => {
   try {
-    const profile = await profileService.getProfileHeader(req.user.id);
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 20;
+    const profile = await profileService.getProfileHeader(req.user.id, page, limit);
     return sendSuccess(res, profile, 'Profile fetched successfully', 200);
   } catch (error) {
     return next(error);
@@ -82,6 +84,26 @@ const addRecord = async (req, res, next) => {
   }
 };
 
+/**
+ * Get public profile of another user
+ * @route GET /api/v1/profile/:userId
+ */
+const getUserProfile = async (req, res, next) => {
+  try {
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 20;
+    const profile = await profileService.getOtherUserProfile(
+      req.user.id, req.params.userId, page, limit
+    );
+    return sendSuccess(res, profile);
+  } catch (err) {
+    if (err.message === 'USER_NOT_FOUND') {
+      return sendError(res, 'USER_NOT_FOUND', 'User not found', 404);
+    }
+    next(err);
+  }
+};
+
 module.exports = {
   getMe,
   updateMe,
@@ -89,4 +111,5 @@ module.exports = {
   updatePreferences,
   getRecords,
   addRecord,
+  getUserProfile,
 };
