@@ -35,10 +35,12 @@ const getProfileHeader = async (userId, page = 1, limit = 20) => {
   const limitNum = Math.max(1, parseInt(limit, 10) || 20);
   const offset = (pageNum - 1) * limitNum;
 
-  const [summary, sports, posts] = await Promise.all([
+  const [summary, sports, posts, followersCount, followingCount] = await Promise.all([
     profileModel.getUserProfileSummary(userId),
     profileModel.getUserSports(userId),
     feedModel.getPostsByUser(userId, limitNum, offset),
+    followModel.getFollowersCount(userId),
+    followModel.getFollowingCount(userId),
   ]);
 
   if (!summary) {
@@ -48,6 +50,8 @@ const getProfileHeader = async (userId, page = 1, limit = 20) => {
   return {
     ...summary,
     sports: sports || [],
+    followers_count: followersCount || 0,
+    following_count: followingCount || 0,
     posts: posts || [],
   };
 };
@@ -301,12 +305,14 @@ const getOtherUserProfile = async (currentUserId, targetUserId, page = 1, limit 
   const limitNum = Math.max(1, parseInt(limit, 10) || 20);
   const offset = (pageNum - 1) * limitNum;
 
-  const [isFollowingTarget, isFollowedByTarget, sports, prs, posts] = await Promise.all([
+  const [isFollowingTarget, isFollowedByTarget, sports, prs, posts, followersCount, followingCount] = await Promise.all([
     followModel.isFollowing(currentUserId, targetUserId),
     followModel.isFollowing(targetUserId, currentUserId),
     profileModel.getUserSports(targetUserId),
     progressModel.getUserPRs(targetUserId),
     feedModel.getPostsByUser(targetUserId, limitNum, offset),
+    followModel.getFollowersCount(targetUserId),
+    followModel.getFollowingCount(targetUserId),
   ]);
 
   return {
@@ -319,6 +325,8 @@ const getOtherUserProfile = async (currentUserId, targetUserId, page = 1, limit 
     longest_streak: user.longest_streak,
     rp_total: user.rp_total,
     sports: sports || [],
+    followers_count: followersCount || 0,
+    following_count: followingCount || 0,
     is_following: Boolean(isFollowingTarget),
     is_followed_by: Boolean(isFollowedByTarget),
     prs: prs || [],

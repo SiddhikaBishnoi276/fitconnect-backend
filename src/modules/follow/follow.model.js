@@ -168,13 +168,45 @@ async function getRecommendationsFallback(currentUserId) {
   return result.rows || [];
 }
 
+/**
+ * Retrieves the count of followers for a given user.
+ * @param {string|number} userId
+ * @returns {Promise<number>}
+ */
+async function getFollowersCount(userId) {
+  const text = `
+    SELECT COUNT(*) AS count
+    FROM follows
+    WHERE following_id = $1
+  `;
+  const result = await db.query(text, [userId]);
+  return parseInt(result.rows[0]?.count || 0, 10);
+}
+
+/**
+ * Retrieves the count of users that a given user is following.
+ * @param {string|number} userId
+ * @returns {Promise<number>}
+ */
+async function getFollowingCount(userId) {
+  const text = `
+    SELECT COUNT(*) AS count
+    FROM follows
+    WHERE follower_id = $1
+  `;
+  const result = await db.query(text, [userId]);
+  return parseInt(result.rows[0]?.count || 0, 10);
+}
+
 module.exports = {
   createFollow,
   deleteFollow,
   isFollowing,
   getFollowers,
   getFollowing,
+  getFollowersCount,
+  getFollowingCount,
   searchByUsername,
   getRecommendations,
-  getRecommendationsFallback
+  getRecommendationsFallback,
 };
