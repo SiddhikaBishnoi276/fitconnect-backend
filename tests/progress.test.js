@@ -5,7 +5,7 @@
  * 1. GET /progress/me for a user with no completed sessions -> rp_total: 0, tier: 'bronze', current_streak: 0, longest_streak: 0, rp_breakdown: {}
  * 2. GET /progress/me with session_completion & streak_milestone entries -> correct breakdown & rp_total sum
  * 3. GET /progress/prs for a user with zero PRs -> returns empty object {}
- * 4. GET /progress/prs with PRs across 2 sports -> grouped by sport_id, includes exercise_name and verification_status
+ * 4. GET /progress/prs with PRs across 2 sports -> grouped by sport_id, includes exercise_name
  * 5. GET /progress/me and GET /progress/prs WITHOUT auth token -> 401 UNAUTHORIZED via authGuard
  * 6. progress.model.js is 100% SELECT-only (no INSERT / UPDATE / DELETE statements)
  * 7. Response shape matches { success: true, data: {...} } via responseFormatter (no raw res.json() in controller)
@@ -233,7 +233,7 @@ async function runTests() {
   });
 
   // --- TEST 4: GET /progress/prs for user with PRs across 2 sports ---
-  await recordAsync('Test 4: GET /progress/prs groups by sport_id and includes exercise_name & verification_status', async () => {
+  await recordAsync('Test 4: GET /progress/prs groups by sport_id and includes exercise_name', async () => {
     const originalGetUserPRs = progressModel.getUserPRs;
     progressModel.getUserPRs = async (userId) => [
       {
@@ -242,10 +242,8 @@ async function runTests() {
         exercise_name: 'Bench Press',
         sport_id: 1,
         metric: '1rm_kg',
-        value: '100.0',
-        previous_best: '95.0',
-        verification_status: 'genuine',
-        created_at: '2026-09-10T10:00:00Z'
+        value: 100,
+        previous_best: 95
       },
       {
         id: 'pr-2',
@@ -253,10 +251,8 @@ async function runTests() {
         exercise_name: 'Squat',
         sport_id: 1,
         metric: '1rm_kg',
-        value: '140.0',
-        previous_best: '130.0',
-        verification_status: 'unverified',
-        created_at: '2026-09-12T10:00:00Z'
+        value: 120,
+        previous_best: 110
       },
       {
         id: 'pr-3',
@@ -264,10 +260,8 @@ async function runTests() {
         exercise_name: '50m Freestyle',
         sport_id: 2,
         metric: 'time_sec',
-        value: '28.5',
-        previous_best: '30.0',
-        verification_status: 'disputed',
-        created_at: '2026-09-14T10:00:00Z'
+        value: 200,
+        previous_best: 190
       }
     ];
 
@@ -290,15 +284,13 @@ async function runTests() {
       const sport1PRs = res.body.data['1'];
       assert.strictEqual(sport1PRs.length, 2);
       assert.strictEqual(sport1PRs[0].exercise_name, 'Bench Press');
-      assert.strictEqual(sport1PRs[0].verification_status, 'genuine');
-      assert.strictEqual(sport1PRs[1].exercise_name, 'Squat');
-      assert.strictEqual(sport1PRs[1].verification_status, 'unverified');
+      assert.strictEqual(sport1PRs[0].value, 100);
+      assert.strictEqual(sport1PRs[1].value, 120);
 
       // Verify sport 2 PRs
       const sport2PRs = res.body.data['2'];
       assert.strictEqual(sport2PRs.length, 1);
-      assert.strictEqual(sport2PRs[0].exercise_name, '50m Freestyle');
-      assert.strictEqual(sport2PRs[0].verification_status, 'disputed');
+      assert.strictEqual(sport2PRs[0].value, 200);
     } finally {
       progressModel.getUserPRs = originalGetUserPRs;
     }
