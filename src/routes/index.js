@@ -17,8 +17,7 @@ router.use('/home', homeRoutes);
 router.use('/progress', progressRoutes);
 // Register module routes
 router.use('/auth', authRoutes);
-rout
-er.use('/profile', profileRoutes);
+router.use('/profile', profileRoutes);
 router.use('/sports', sportsRoutes);
 router.use('/exercises', exercisesRoutes);
 const planRoutes = require('../modules/plan/plan.routes');

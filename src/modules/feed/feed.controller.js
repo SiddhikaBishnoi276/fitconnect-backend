@@ -85,6 +85,9 @@ async function unlike(req, res, next) {
     const result = await feedService.unlikePost(req.params.postId, req.user.id);
     return sendSuccess(res, result);
   } catch (err) {
+    if (err.message === 'POST_NOT_FOUND') {
+      return sendError(res, 'POST_NOT_FOUND', 'Post not found', 404);
+    }
     next(err);
   }
 }

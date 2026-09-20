@@ -135,34 +135,66 @@ async function checkLikedByUser(postId, userId) {
 }
 
 /**
- * Adds a like to a post (idempotent via ON CONFLICT DO NOTHING).
+ * Adds a like to a post (idempotent via ON CONFLICT DO NOTHING)
+ * and returns the updated likes_count in a single transaction.
  * Database trigger automatically syncs posts.likes_count.
  * @param {string|number} postId
  * @param {string|number} userId
- * @returns {Promise<void>}
+ * @returns {Promise<number>} Updated likes_count
  */
 async function addLike(postId, userId) {
-  const text = `
-    INSERT INTO likes (post_id, user_id)
-    VALUES ($1, $2)
-    ON CONFLICT DO NOTHING
-  `;
-  await db.query(text, [postId, userId]);
+  const client = await db.getClient();
+  try {
+    await client.query('BEGIN');
+    await client.query(
+      `INSERT INTO likes (post_id, user_id)
+       VALUES ($1, $2)
+       ON CONFLICT DO NOTHING`,
+      [postId, userId]
+    );
+    const postRes = await client.query(
+      `SELECT likes_count FROM posts WHERE id = $1`,
+      [postId]
+    );
+    await client.query('COMMIT');
+    return postRes.rows.length > 0 ? Number(postRes.rows[0].likes_count) : 0;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 /**
- * Removes a like from a post (idempotent).
+ * Removes a like from a post (idempotent)
+ * and returns the updated likes_count in a single transaction.
  * Database trigger automatically syncs posts.likes_count.
  * @param {string|number} postId
  * @param {string|number} userId
- * @returns {Promise<void>}
+ * @returns {Promise<number>} Updated likes_count
  */
 async function removeLike(postId, userId) {
-  const text = `
-    DELETE FROM likes
-    WHERE post_id = $1 AND user_id = $2
-  `;
-  await db.query(text, [postId, userId]);
+  const client = await db.getClient();
+  try {
+    await client.query('BEGIN');
+    await client.query(
+      `DELETE FROM likes
+       WHERE post_id = $1 AND user_id = $2`,
+      [postId, userId]
+    );
+    const postRes = await client.query(
+      `SELECT likes_count FROM posts WHERE id = $1`,
+      [postId]
+    );
+    await client.query('COMMIT');
+    return postRes.rows.length > 0 ? Number(postRes.rows[0].likes_count) : 0;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 /**

@@ -119,10 +119,10 @@ async function getFeed(tab, currentUserId, page = 1, limit = 20) {
 }
 
 /**
- * Likes a post (idempotent).
+ * Likes a post (idempotent) and returns updated like count and status.
  * @param {string|number} postId
  * @param {string|number} userId
- * @returns {Promise<{ liked: boolean }>}
+ * @returns {Promise<{ post_id: string|number, liked_by_me: boolean, liked: boolean, like_count: number }>}
  */
 async function likePost(postId, userId) {
   const post = await feedModel.getPostById(postId);
@@ -130,19 +130,34 @@ async function likePost(postId, userId) {
     throw new Error('POST_NOT_FOUND');
   }
 
-  await feedModel.addLike(postId, userId);
-  return { liked: true };
+  const likeCount = await feedModel.addLike(postId, userId);
+  return {
+    post_id: postId,
+    liked_by_me: true,
+    liked: true,
+    like_count: Number(likeCount),
+  };
 }
 
 /**
- * Unlikes a post (idempotent).
+ * Unlikes a post (idempotent) and returns updated like count and status.
  * @param {string|number} postId
  * @param {string|number} userId
- * @returns {Promise<{ liked: boolean }>}
+ * @returns {Promise<{ post_id: string|number, liked_by_me: boolean, liked: boolean, like_count: number }>}
  */
 async function unlikePost(postId, userId) {
-  await feedModel.removeLike(postId, userId);
-  return { liked: false };
+  const post = await feedModel.getPostById(postId);
+  if (!post) {
+    throw new Error('POST_NOT_FOUND');
+  }
+
+  const likeCount = await feedModel.removeLike(postId, userId);
+  return {
+    post_id: postId,
+    liked_by_me: false,
+    liked: false,
+    like_count: Number(likeCount),
+  };
 }
 
 /**

@@ -374,6 +374,9 @@ async function runTests() {
 
       assert.strictEqual(res.status, 200);
       assert.strictEqual(res.body.success, true);
+      assert.strictEqual(res.body.data.post_id, testPostId);
+      assert.strictEqual(res.body.data.liked_by_me, true);
+      assert.strictEqual(res.body.data.like_count, 1);
       assert.strictEqual(res.body.data.liked, true);
 
       // Verify row in likes table
@@ -396,6 +399,9 @@ async function runTests() {
 
       assert.strictEqual(res.status, 200);
       assert.strictEqual(res.body.success, true);
+      assert.strictEqual(res.body.data.post_id, testPostId);
+      assert.strictEqual(res.body.data.liked_by_me, true);
+      assert.strictEqual(res.body.data.like_count, 1);
       assert.strictEqual(res.body.data.liked, true);
 
       const postRow = await db.query(`SELECT likes_count FROM posts WHERE id = $1;`, [testPostId]);
@@ -413,6 +419,9 @@ async function runTests() {
 
       assert.strictEqual(res.status, 200);
       assert.strictEqual(res.body.success, true);
+      assert.strictEqual(res.body.data.post_id, testPostId);
+      assert.strictEqual(res.body.data.liked_by_me, false);
+      assert.strictEqual(res.body.data.like_count, 0);
       assert.strictEqual(res.body.data.liked, false);
 
       const likeRow = await db.query(`SELECT * FROM likes WHERE post_id = $1 AND user_id = $2;`, [testPostId, user3.id]);
@@ -433,6 +442,9 @@ async function runTests() {
 
       assert.strictEqual(res.status, 200);
       assert.strictEqual(res.body.success, true);
+      assert.strictEqual(res.body.data.post_id, testPostId);
+      assert.strictEqual(res.body.data.liked_by_me, false);
+      assert.strictEqual(res.body.data.like_count, 0);
       assert.strictEqual(res.body.data.liked, false);
     });
 
@@ -451,7 +463,16 @@ async function runTests() {
       assert.strictEqual(likeRes.body.success, false);
       assert.strictEqual(likeRes.body.error.code, 'POST_NOT_FOUND');
 
-      // 2. Draft caption for non-existent session -> 404 SESSION_NOT_FOUND
+      // 2. Unlike non-existent post -> 404 POST_NOT_FOUND
+      const unlikeRes = await apiCall(`/social/feed/posts/${fakeUuid}/like`, {
+        method: 'DELETE',
+        token: user1Token,
+      });
+      assert.strictEqual(unlikeRes.status, 404);
+      assert.strictEqual(unlikeRes.body.success, false);
+      assert.strictEqual(unlikeRes.body.error.code, 'POST_NOT_FOUND');
+
+      // 3. Draft caption for non-existent session -> 404 SESSION_NOT_FOUND
       const draftRes = await apiCall('/social/feed/posts/draft', {
         method: 'POST',
         token: user1Token,
