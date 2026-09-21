@@ -40,11 +40,4 @@ router.patch('/preferences', authGuard, profileController.updatePreferences);
  */
 router.get('/records', authGuard, profileController.getRecords);
 
-/**
- * @route   POST /api/v1/profile/records
- * @desc    Add a new personal record (manual entry)
- * @access  Protected
- */
-router.post('/records', authGuard, profileController.addRecord);
-
 module.exports = router;

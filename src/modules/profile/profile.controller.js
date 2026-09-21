@@ -69,24 +69,10 @@ const getRecords = async (req, res, next) => {
   }
 };
 
-/**
- * Add a new personal record (manual entry)
- * @route POST /api/v1/profile/records
- */
-const addRecord = async (req, res, next) => {
-  try {
-    const record = await profileService.addPersonalRecord(req.user.id, req.body);
-    return sendSuccess(res, record, 'Personal record added successfully', 201);
-  } catch (error) {
-    return next(error);
-  }
-};
-
 module.exports = {
   getMe,
   updateMe,
   updateInjuries,
   updatePreferences,
   getRecords,
-  addRecord,
 };

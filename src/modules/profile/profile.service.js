@@ -272,30 +272,6 @@ const getPersonalRecords = async (userId, sportId = null) => {
   return records || [];
 };
 
-/**
- * Adds a new personal record manually
- * @param {string} userId
- * @param {object} payload - { exercise_id, metric, value }
- * @returns {Promise<object>}
- */
-const addPersonalRecord = async (userId, payload = {}) => {
-  const { exercise_id, metric, value } = payload;
-
-  if (!exercise_id || typeof exercise_id !== 'string') {
-    throw createError('Valid exercise_id is required', 'VALIDATION_ERROR', 400);
-  }
-  if (!metric || typeof metric !== 'string') {
-    throw createError('Valid metric is required', 'VALIDATION_ERROR', 400);
-  }
-  const valNum = Number(value);
-  if (isNaN(valNum) || valNum <= 0) {
-    throw createError('Valid positive value is required', 'VALIDATION_ERROR', 400);
-  }
-
-  const record = await profileModel.createPersonalRecord(userId, exercise_id, metric, valNum);
-  return record;
-};
-
 module.exports = {
   VALID_RECOVERY_STATUS,
   VALID_DIET_PREFERENCE,
@@ -306,5 +282,4 @@ module.exports = {
   getPreferences,
   updatePreferences,
   getPersonalRecords,
-  addPersonalRecord,
 };

@@ -263,47 +263,6 @@ const getUserPersonalRecords = async (userId, sportId = null, client = null) => 
   return result.rows;
 };
 
-/**
- * Creates a new personal record for the user. Optionally creates a post.
- * @param {string} userId 
- * @param {string} exerciseId 
- * @param {string} metric 
- * @param {number} value 
- * @param {import('pg').PoolClient} [client]
- * @returns {Promise<object>}
- */
-const createPersonalRecord = async (userId, exerciseId, metric, value, client = null) => {
-  const isExternalClient = !!client;
-  const activeClient = isExternalClient ? client : await db.getClient();
-  try {
-    if (!isExternalClient) await activeClient.query('BEGIN');
-
-    // Find previous best to populate previous_best
-    const prevBestRes = await activeClient.query(
-      `SELECT value FROM prs WHERE user_id = $1 AND exercise_id = $2 AND metric = $3 ORDER BY value DESC LIMIT 1;`,
-      [userId, exerciseId, metric]
-    );
-    const previousBest = prevBestRes.rows.length > 0 ? prevBestRes.rows[0].value : null;
-
-    const prRes = await activeClient.query(
-      `INSERT INTO prs (user_id, exercise_id, metric, value, previous_best)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING *;`,
-      [userId, exerciseId, metric, value, previousBest]
-    );
-    const pr = prRes.rows[0];
-
-    if (!isExternalClient) await activeClient.query('COMMIT');
-
-    return pr;
-  } catch (error) {
-    if (!isExternalClient) await activeClient.query('ROLLBACK');
-    throw error;
-  } finally {
-    if (!isExternalClient) activeClient.release();
-  }
-};
-
 module.exports = {
   getUserProfileSummary,
   getUserSports,
@@ -314,5 +273,4 @@ module.exports = {
   getUserPreferences,
   updateUserPreferences,
   getUserPersonalRecords,
-  createPersonalRecord,
 };
