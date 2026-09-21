@@ -10,18 +10,18 @@ const planModel = require('./plan.model');
 const generateWeeklySummary = async (userId, planId) => {
   try {
     console.log(`[AI-Summary] Starting generation for User: ${userId} | Plan: ${planId}`);
-    
+
     // 1. Fetch Plan Details (week_start_date, etc.)
     const planRes = await db.query(
-      `SELECT week_start_date FROM plans WHERE id = $1 AND user_id = $2`, 
+      `SELECT week_start_date FROM plans WHERE id = $1 AND user_id = $2`,
       [planId, userId]
     );
-    
+
     if (planRes.rows.length === 0) {
       console.warn(`[AI-Summary] Plan not found`);
       return;
     }
-    
+
     const weekStartDate = planRes.rows[0].week_start_date;
     const weekEndDate = new Date(new Date(weekStartDate).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
@@ -64,7 +64,7 @@ You MUST respond with a strictly formatted JSON object following this schema:
   "achievements": (Array of strings, e.g., ["Hit deadlift target"]),
   "recommendations_for_next_week": (String, brief coaching advice)
 }`;
-    
+
     const userPrompt = `Weekly Raw Data:
 ${JSON.stringify(sessionsRaw, null, 2)}
 
