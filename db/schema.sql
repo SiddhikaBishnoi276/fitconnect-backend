@@ -110,6 +110,7 @@ CREATE TABLE users (
   longest_streak        INT NOT NULL DEFAULT 0,
 
   privacy               privacy_enum NOT NULL DEFAULT 'public',
+  notifications_enabled BOOLEAN NOT NULL DEFAULT true,
   created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()
 );
