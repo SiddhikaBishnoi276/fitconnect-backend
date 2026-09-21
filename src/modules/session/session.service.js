@@ -376,7 +376,7 @@ const completeSession = async (userId, sessionId, payload) => {
     if (fb.feedback !== 'skipped' && fb.actual_weight_kg !== null && fb.actual_weight_kg !== undefined) {
       const metric = '1rm_kg'; // standardizing on 1rm_kg for weight-based PRs
       const currentPrValue = await sessionModel.getPersonalRecord(userId, fb.exercise_id, metric);
-      
+
       if (currentPrValue === null || fb.actual_weight_kg > currentPrValue) {
         const newPr = await sessionModel.insertPersonalRecord({
           userId,
@@ -482,48 +482,72 @@ const completeSession = async (userId, sessionId, payload) => {
         console.error('Tier promotion notification failed:', err);
       }
     }
-  }
+    // AI Weekly Summary Background Trigger
+    try {
+      const db = require('../../config/db');
+      const planDayRow = await db.query(`SELECT plan_id FROM plan_days WHERE id = $1`, [session.plan_day_id]);
+      if (planDayRow.rows.length > 0) {
+        const planId = planDayRow.rows[0].plan_id;
+        const countRes = await db.query(`
+        SELECT 
+          (SELECT COUNT(*) FROM plan_days WHERE plan_id = $1) as total_days,
+          (SELECT COUNT(*) FROM sessions s JOIN plan_days pd ON s.plan_day_id = pd.id WHERE pd.plan_id = $1 AND s.status = 'completed') as completed_days
+      `, [planId]);
 
-  return {
-    duration_min: durationMin,
-    exercises_completed: exercisesCompleted,
-    adapted_count: adaptedCount,
-    skipped_count: skippedCount,
-    fully_completed: fullyCompleted,
-    rp_awarded: rpAwarded,
-    new_current_streak: newCurrentStreak,
-    streak_milestone_hit: streakMilestoneHit,
-    new_prs: newPrs,
+        const { total_days, completed_days } = countRes.rows[0];
+        if (parseInt(total_days) > 0 && parseInt(completed_days) === parseInt(total_days)) {
+          console.log(`[SessionService] Plan ${planId} completed! Triggering AI Weekly Summary asynchronously...`);
+          const planSummaryService = require('../plan/plan.summary.service');
+          // Do not await, let it run in background
+          planSummaryService.generateWeeklySummary(userId, planId).catch(err => {
+            console.error('[SessionService] Background AI Summary failed:', err);
+          });
+        }
+      }
+    } catch (err) {
+      console.error('[SessionService] Error checking plan completion status:', err);
+    }
+
+    return {
+      duration_min: durationMin,
+      exercises_completed: exercisesCompleted,
+      adapted_count: adaptedCount,
+      skipped_count: skippedCount,
+      fully_completed: fullyCompleted,
+      rp_awarded: rpAwarded,
+      new_current_streak: newCurrentStreak,
+      streak_milestone_hit: streakMilestoneHit,
+      new_prs: newPrs,
+    };
   };
-};
 
-/**
- * POST /sessions/:id/cancel - Discard mid-session workout
- */
-const cancelSession = async (userId, sessionId) => {
-  const session = await sessionModel.getSessionById(sessionId);
-  if (!session || session.user_id !== userId) {
-    const err = new Error('Session not found');
-    err.statusCode = 404;
-    throw err;
-  }
+  /**
+   * POST /sessions/:id/cancel - Discard mid-session workout
+   */
+  const cancelSession = async (userId, sessionId) => {
+    const session = await sessionModel.getSessionById(sessionId);
+    if (!session || session.user_id !== userId) {
+      const err = new Error('Session not found');
+      err.statusCode = 404;
+      throw err;
+    }
 
-  if (session.status === 'completed') {
-    const err = new Error('Cannot cancel a completed workout session');
-    err.statusCode = 409;
-    throw err;
-  }
+    if (session.status === 'completed') {
+      const err = new Error('Cannot cancel a completed workout session');
+      err.statusCode = 409;
+      throw err;
+    }
 
-  await sessionModel.deleteSession(sessionId);
-  return true;
-};
+    await sessionModel.deleteSession(sessionId);
+    return true;
+  };
 
-module.exports = {
-  computeSessionExerciseList,
-  createSession,
-  getActiveSession,
-  getSessionById,
-  submitExerciseFeedback,
-  completeSession,
-  cancelSession,
-};
+  module.exports = {
+    computeSessionExerciseList,
+    createSession,
+    getActiveSession,
+    getSessionById,
+    submitExerciseFeedback,
+    completeSession,
+    cancelSession,
+  };
