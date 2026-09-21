@@ -177,7 +177,7 @@ const replaceUserInjuries = async (userId, injuriesArray = [], client = null) =>
 const getUserPreferences = async (userId, client = null) => {
   const executor = client || db;
   const result = await executor.query(
-    `SELECT diet_preference, regional_cuisine, privacy
+    `SELECT diet_preference, regional_cuisine, privacy, notifications_enabled
      FROM users
      WHERE id = $1;`,
     [userId]
@@ -186,15 +186,15 @@ const getUserPreferences = async (userId, client = null) => {
 };
 
 /**
- * Dynamically updates preferences (diet_preference, regional_cuisine, privacy)
+ * Dynamically updates preferences (diet_preference, regional_cuisine, privacy, notifications_enabled)
  * @param {string} userId
- * @param {object} updates - subset of { diet_preference, regional_cuisine, privacy }
+ * @param {object} updates - subset of { diet_preference, regional_cuisine, privacy, notifications_enabled }
  * @param {import('pg').PoolClient} [client]
  * @returns {Promise<object|null>}
  */
 const updateUserPreferences = async (userId, updates = {}, client = null) => {
   const executor = client || db;
-  const allowedFields = ['diet_preference', 'regional_cuisine', 'privacy'];
+  const allowedFields = ['diet_preference', 'regional_cuisine', 'privacy', 'notifications_enabled'];
   const setClauses = [];
   const values = [];
   let paramIndex = 1;
@@ -218,7 +218,7 @@ const updateUserPreferences = async (userId, updates = {}, client = null) => {
     UPDATE users
     SET ${setClauses.join(', ')}
     WHERE id = $${paramIndex}
-    RETURNING diet_preference, regional_cuisine, privacy;
+    RETURNING diet_preference, regional_cuisine, privacy, notifications_enabled;
   `;
 
   const result = await executor.query(queryText, values);

@@ -215,7 +215,7 @@ const updatePreferences = async (userId, updates = {}) => {
     throw createError('No valid preference fields to update', 'VALIDATION_ERROR', 400);
   }
 
-  const allowedFields = ['diet_preference', 'regional_cuisine', 'privacy'];
+  const allowedFields = ['diet_preference', 'regional_cuisine', 'privacy', 'notifications_enabled'];
   const filteredUpdates = {};
 
   for (const field of allowedFields) {
@@ -247,6 +247,13 @@ const updatePreferences = async (userId, updates = {}) => {
         'VALIDATION_ERROR',
         400
       );
+    }
+  }
+
+  // Validate notifications_enabled
+  if (filteredUpdates.notifications_enabled !== undefined) {
+    if (typeof filteredUpdates.notifications_enabled !== 'boolean') {
+      throw createError('notifications_enabled must be a boolean', 'VALIDATION_ERROR', 400);
     }
   }
 

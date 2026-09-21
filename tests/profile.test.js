@@ -263,6 +263,50 @@ describe('Profile & Settings Module — Comprehensive Test Suite', () => {
     expect(res.body.error.message).toMatch(/Invalid diet_preference/i);
   });
 
+  // 8a. PATCH /profile/preferences with notifications_enabled: false -> 200, returns notifications_enabled: false
+  test('8a. PATCH /api/v1/profile/preferences -> 200 with notifications_enabled: false', async () => {
+    const res = await request(app)
+      .patch('/api/v1/profile/preferences')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        notifications_enabled: false,
+      })
+      .expect(200);
+
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.notifications_enabled).toBe(false);
+  });
+
+  // 8b. PATCH /profile/preferences { diet_preference: "veg" } -> returns notifications_enabled field present
+  test('8b. PATCH /api/v1/profile/preferences -> 200 with other field, returns notifications_enabled field present', async () => {
+    const res = await request(app)
+      .patch('/api/v1/profile/preferences')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        diet_preference: 'veg',
+      })
+      .expect(200);
+
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.diet_preference).toBe('veg');
+    expect(res.body.data).toHaveProperty('notifications_enabled');
+  });
+
+  // 8c. PATCH /profile/preferences invalid notifications_enabled ("yes") -> 400 VALIDATION_ERROR
+  test('8c. PATCH /api/v1/profile/preferences -> 400 VALIDATION_ERROR when notifications_enabled is non-boolean ("yes")', async () => {
+    const res = await request(app)
+      .patch('/api/v1/profile/preferences')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        notifications_enabled: 'yes',
+      })
+      .expect(400);
+
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    expect(res.body.error.message).toMatch(/notifications_enabled must be a boolean/i);
+  });
+
   // 9. GET /profile/records bina sport_id -> 200, array (empty bhi valid)
   test('9. GET /api/v1/profile/records -> 200 without sport_id returns all personal records (distinct per exercise)', async () => {
     const res = await request(app)
