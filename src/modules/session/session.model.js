@@ -289,7 +289,7 @@ const getLastCompletedSessionDate = async (userId, currentSessionId) => {
  */
 const getUserById = async (userId) => {
   const res = await db.query(
-    `SELECT id, current_streak, longest_streak, rp_total FROM users WHERE id = $1`,
+    `SELECT id, current_streak, longest_streak, rp_total, tier FROM users WHERE id = $1`,
     [userId]
   );
   return res.rows[0] || null;
@@ -309,6 +309,23 @@ const updateUserStreaks = async (userId, currentStreak, longestStreak) => {
      WHERE id = $3
      RETURNING current_streak, longest_streak`,
     [currentStreak, longestStreak, userId]
+  );
+  return res.rows[0];
+};
+
+/**
+ * Update user tier
+ * @param {string} userId 
+ * @param {string} newTier 
+ * @returns {Promise<object>}
+ */
+const updateUserTier = async (userId, newTier) => {
+  const res = await db.query(
+    `UPDATE users
+     SET tier = $1, updated_at = now()
+     WHERE id = $2
+     RETURNING id, tier, rp_total`,
+    [newTier, userId]
   );
   return res.rows[0];
 };
@@ -338,5 +355,6 @@ module.exports = {
   getLastCompletedSessionDate,
   getUserById,
   updateUserStreaks,
+  updateUserTier,
   deleteSession,
 };

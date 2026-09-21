@@ -3,6 +3,7 @@
  */
 const followModel = require('./follow.model');
 const { findUserById } = require('../auth/auth.model');
+const notificationService = require('../notifications/notifications.service');
 
 /**
  * Follows a target user directly.
@@ -15,7 +16,22 @@ async function followUser(currentUserId, targetUserId) {
     throw new Error('CANNOT_FOLLOW_SELF');
   }
 
+  const alreadyFollowing = await followModel.isFollowing(currentUserId, targetUserId);
   await followModel.createFollow(currentUserId, targetUserId);
+
+  if (!alreadyFollowing) {
+    try {
+      const follower = await findUserById(currentUserId);
+      await notificationService.notifyNewFollower(
+        targetUserId,
+        currentUserId,
+        follower?.name || follower?.username || 'Someone'
+      );
+    } catch (err) {
+      console.error('New follower notification failed:', err);
+    }
+  }
+
   return { following: true };
 }
 

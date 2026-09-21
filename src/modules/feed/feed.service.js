@@ -4,6 +4,8 @@
 const feedModel = require('./feed.model');
 const { buildDraftCaptionPrompt } = require('./feed.prompts');
 const llmClient = require('../../llm/llmClient');
+const { findUserById } = require('../auth/auth.model');
+const notificationService = require('../notifications/notifications.service');
 
 const VALID_POST_TYPES = ['pr', 'achievement', 'photo', 'session_complete'];
 const FALLBACK_CAPTION = 'Just finished a great session! 💪';
@@ -130,7 +132,24 @@ async function likePost(postId, userId) {
     throw new Error('POST_NOT_FOUND');
   }
 
+  const alreadyLiked = await feedModel.checkLikedByUser(postId, userId);
   const likeCount = await feedModel.addLike(postId, userId);
+
+  // Trigger notification only if liking someone else's post and not already liked
+  if (post.user_id !== userId && !alreadyLiked) {
+    try {
+      const liker = await findUserById(userId);
+      await notificationService.notifyPostLiked(
+        post.user_id,
+        userId,
+        liker?.name || liker?.username || 'Someone',
+        postId
+      );
+    } catch (err) {
+      console.error('Post liked notification failed:', err);
+    }
+  }
+
   return {
     post_id: postId,
     liked_by_me: true,

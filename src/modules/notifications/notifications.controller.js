@@ -20,6 +20,21 @@ const getNotifications = async (req, res, next) => {
 };
 
 /**
+ * Controller handler to fetch standalone unread notification count
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ */
+const getUnreadCount = async (req, res, next) => {
+    try {
+        const data = await notificationsService.getUnreadNotificationsCount(req.user.id);
+        return sendSuccess(res, data, 'Unread notification count fetched successfully', 200);
+    } catch (error) {
+        return next(error);
+    }
+};
+
+/**
  * Controller handler to mark a single notification as read
  * @param {import('express').Request} req
  * @param {import('express').Response} res
@@ -66,9 +81,27 @@ const registerDeviceToken = async (req, res, next) => {
     }
 };
 
+/**
+ * Controller handler to remove an FCM device token
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ */
+const unregisterDeviceToken = async (req, res, next) => {
+    try {
+        const { fcm_token } = req.body;
+        const result = await notificationsService.unregisterDeviceToken(req.user.id, fcm_token);
+        return sendSuccess(res, result, 'Device token removed successfully', 200);
+    } catch (error) {
+        return next(error);
+    }
+};
+
 module.exports = {
     getNotifications,
+    getUnreadCount,
     markRead,
     markAllRead,
     registerDeviceToken,
+    unregisterDeviceToken,
 };

@@ -1,6 +1,8 @@
 // Session service: real-time adaptation, fatigue adjustments, and workout state machine
 const sessionModel = require('./session.model');
 const { SESSION_COMPLETION_RP, STREAK_MILESTONE_RP, STREAK_MILESTONES } = require('../../config/session.config');
+const { getTierForRp, isTierPromotion } = require('../../config/tierThresholds.config');
+const notificationService = require('../notifications/notifications.service');
 
 /**
  * Map check-in values from request body (numeric 1-5 or string) to Postgres ENUM strings
@@ -454,9 +456,32 @@ const completeSession = async (userId, sessionId, payload) => {
         points: STREAK_MILESTONE_RP,
         reason: `${currentStreak}-day streak`,
       });
+
+      try {
+        await notificationService.notifyStreakMilestone(userId, currentStreak);
+      } catch (err) {
+        console.error('Streak milestone notification failed:', err);
+      }
     }
   } else {
     newCurrentStreak = user?.current_streak || 0;
+  }
+
+  // Tier promotion logic & notification
+  if (rpAwarded > 0) {
+    const previousTier = user?.tier || 'bronze';
+    const updatedUser = await sessionModel.getUserById(userId);
+    const newTotalRp = updatedUser?.rp_total !== undefined ? Number(updatedUser.rp_total) : (Number(user?.rp_total || 0) + rpAwarded);
+    const calculatedTier = getTierForRp(newTotalRp);
+
+    if (isTierPromotion(previousTier, calculatedTier)) {
+      await sessionModel.updateUserTier(userId, calculatedTier);
+      try {
+        await notificationService.notifyTierPromotion(userId, calculatedTier);
+      } catch (err) {
+        console.error('Tier promotion notification failed:', err);
+      }
+    }
   }
 
   return {
