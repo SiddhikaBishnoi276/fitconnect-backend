@@ -459,6 +459,32 @@ const completeSession = async (userId, sessionId, payload) => {
     newCurrentStreak = user?.current_streak || 0;
   }
 
+  // AI Weekly Summary Background Trigger
+  try {
+    const db = require('../../config/db');
+    const planDayRow = await db.query(`SELECT plan_id FROM plan_days WHERE id = $1`, [session.plan_day_id]);
+    if (planDayRow.rows.length > 0) {
+      const planId = planDayRow.rows[0].plan_id;
+      const countRes = await db.query(`
+        SELECT 
+          (SELECT COUNT(*) FROM plan_days WHERE plan_id = $1) as total_days,
+          (SELECT COUNT(*) FROM sessions s JOIN plan_days pd ON s.plan_day_id = pd.id WHERE pd.plan_id = $1 AND s.status = 'completed') as completed_days
+      `, [planId]);
+      
+      const { total_days, completed_days } = countRes.rows[0];
+      if (parseInt(total_days) > 0 && parseInt(completed_days) === parseInt(total_days)) {
+        console.log(`[SessionService] Plan ${planId} completed! Triggering AI Weekly Summary asynchronously...`);
+        const planSummaryService = require('../plan/plan.summary.service');
+        // Do not await, let it run in background
+        planSummaryService.generateWeeklySummary(userId, planId).catch(err => {
+          console.error('[SessionService] Background AI Summary failed:', err);
+        });
+      }
+    }
+  } catch (err) {
+    console.error('[SessionService] Error checking plan completion status:', err);
+  }
+
   return {
     duration_min: durationMin,
     exercises_completed: exercisesCompleted,

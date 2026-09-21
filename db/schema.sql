@@ -469,3 +469,22 @@ CREATE UNIQUE INDEX idx_leaderboard_user ON leaderboard_snapshot (user_id);
 
 -- Run on a schedule (cron / pg_cron):
 --   REFRESH MATERIALIZED VIEW CONCURRENTLY leaderboard_snapshot;
+
+-- ============================================================================
+-- AI WEEKLY SUMMARIES
+-- ============================================================================
+-- Stores compressed JSON context for the AI when the raw plans are deleted.
+
+CREATE TABLE ai_weekly_summaries (
+  id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id              UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  plan_id              UUID REFERENCES plans(id) ON DELETE SET NULL, 
+  week_start_date      DATE NOT NULL,
+  week_end_date        DATE NOT NULL,
+  summary_json         JSONB NOT NULL,
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (user_id, week_start_date)
+);
+
+CREATE INDEX idx_ai_weekly_summaries_user ON ai_weekly_summaries (user_id, week_start_date DESC);
+
