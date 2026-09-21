@@ -25,6 +25,7 @@ const sessionRoutes = require('../modules/session/session.routes');
 const rankingRoutes = require('../modules/ranking/ranking.routes');
 const followRoutes = require('../modules/follow/follow.routes');
 const feedRoutes = require('../modules/feed/feed.routes');
+const notificationsRoutes = require('../modules/notifications/notifications.routes');
 
 // Module routes registration
 router.use('/plans', planRoutes);
@@ -32,6 +33,7 @@ router.use('/sessions', sessionRoutes);
 router.use('/ranking', rankingRoutes);
 router.use('/', followRoutes);
 router.use('/', feedRoutes);
+router.use('/notifications', notificationsRoutes);
 
 module.exports = router;
 
