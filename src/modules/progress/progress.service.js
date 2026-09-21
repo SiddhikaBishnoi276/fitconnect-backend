@@ -59,7 +59,6 @@ const getUserPRs = async (userId) => {
         metric: row.metric,
         value: row.value,
         previous_best: row.previous_best,
-        verification_status: row.verification_status,
         created_at: row.created_at,
       });
     }

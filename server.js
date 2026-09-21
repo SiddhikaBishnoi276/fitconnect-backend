@@ -5,6 +5,9 @@ const { testConnection } = require('./src/config/db');
 
 const PORT = env.PORT || 5000;
 
+// Initialize cron jobs
+require('./src/utils/cron');
+
 app.listen(PORT, async () => {
   console.log(`FitConnect Backend server running on port ${PORT}`);
   try {

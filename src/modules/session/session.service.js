@@ -369,9 +369,31 @@ const completeSession = async (userId, sessionId, payload) => {
     fullyCompleted,
   });
 
-  // PR Detection: Removed auto-PR insertion (PRs are user-managed via Profile per sports)
+  // PR Detection
   const newPrs = [];
-
+  for (const fb of feedbackRows) {
+    if (fb.feedback !== 'skipped' && fb.actual_weight_kg !== null && fb.actual_weight_kg !== undefined) {
+      const metric = '1rm_kg'; // standardizing on 1rm_kg for weight-based PRs
+      const currentPrValue = await sessionModel.getPersonalRecord(userId, fb.exercise_id, metric);
+      
+      if (currentPrValue === null || fb.actual_weight_kg > currentPrValue) {
+        const newPr = await sessionModel.insertPersonalRecord({
+          userId,
+          exerciseId: fb.exercise_id,
+          metric,
+          value: fb.actual_weight_kg,
+          previousBest: currentPrValue,
+          sessionId
+        });
+        newPrs.push({
+          exercise_id: fb.exercise_id,
+          metric,
+          value: fb.actual_weight_kg,
+          previous_best: currentPrValue
+        });
+      }
+    }
+  }
   // RP & Streak calculation
   let rpAwarded = 0;
   let newCurrentStreak = 0;
@@ -436,6 +458,32 @@ const completeSession = async (userId, sessionId, payload) => {
     }
   } else {
     newCurrentStreak = user?.current_streak || 0;
+  }
+
+  // AI Weekly Summary Background Trigger
+  try {
+    const db = require('../../config/db');
+    const planDayRow = await db.query(`SELECT plan_id FROM plan_days WHERE id = $1`, [session.plan_day_id]);
+    if (planDayRow.rows.length > 0) {
+      const planId = planDayRow.rows[0].plan_id;
+      const countRes = await db.query(`
+        SELECT 
+          (SELECT COUNT(*) FROM plan_days WHERE plan_id = $1) as total_days,
+          (SELECT COUNT(*) FROM sessions s JOIN plan_days pd ON s.plan_day_id = pd.id WHERE pd.plan_id = $1 AND s.status = 'completed') as completed_days
+      `, [planId]);
+      
+      const { total_days, completed_days } = countRes.rows[0];
+      if (parseInt(total_days) > 0 && parseInt(completed_days) === parseInt(total_days)) {
+        console.log(`[SessionService] Plan ${planId} completed! Triggering AI Weekly Summary asynchronously...`);
+        const planSummaryService = require('../plan/plan.summary.service');
+        // Do not await, let it run in background
+        planSummaryService.generateWeeklySummary(userId, planId).catch(err => {
+          console.error('[SessionService] Background AI Summary failed:', err);
+        });
+      }
+    }
+  } catch (err) {
+    console.error('[SessionService] Error checking plan completion status:', err);
   }
 
   return {

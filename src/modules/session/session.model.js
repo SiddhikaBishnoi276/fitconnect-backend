@@ -239,9 +239,9 @@ const insertPersonalRecord = async ({
   const res = await db.query(
     `INSERT INTO prs (
        user_id, exercise_id, metric, value,
-       previous_best, session_id, genuine_votes, flag_votes, verification_status
+       previous_best, session_id
      )
-     VALUES ($1, $2, $3, $4, $5, $6, 0, 0, 'unverified')
+     VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING *`,
     [userId, exerciseId, metric, value, previousBest, sessionId]
   );

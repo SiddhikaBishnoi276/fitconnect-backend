@@ -56,7 +56,6 @@ CREATE TYPE rp_type_enum         AS ENUM ('session_completion', 'streak_mileston
 CREATE TYPE meal_slot_enum       AS ENUM ('breakfast', 'lunch', 'dinner', 'snack', 'pre_workout', 'post_workout');
 CREATE TYPE post_type_enum       AS ENUM ('pr', 'achievement', 'photo', 'session_complete');
 CREATE TYPE vote_enum            AS ENUM ('genuine', 'flag');
-CREATE TYPE pr_verification_enum AS ENUM ('unverified', 'genuine', 'disputed');
 CREATE TYPE notification_type_enum AS ENUM ('post_liked', 'streak_milestone', 'tier_promotion', 'followed_user_pr', 'pr_disputed');
 CREATE TYPE device_platform_enum AS ENUM ('ios', 'android', 'web');
 CREATE TYPE sleep_quality_enum AS ENUM ('good', 'ok', 'poor');
@@ -367,58 +366,10 @@ CREATE TABLE prs (
   previous_best          NUMERIC,
   session_id             UUID REFERENCES sessions(id),
 
-  genuine_votes          INT NOT NULL DEFAULT 0,          -- kept in sync by trigger below
-  flag_votes             INT NOT NULL DEFAULT 0,
-  verification_status    pr_verification_enum NOT NULL DEFAULT 'unverified',
-
   created_at             TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_prs_user_exercise ON prs (user_id, exercise_id, created_at DESC);
-
-CREATE TABLE pr_votes (
-  pr_id        UUID NOT NULL REFERENCES prs(id) ON DELETE CASCADE,
-  voter_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  vote         vote_enum NOT NULL,
-  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-  PRIMARY KEY (pr_id, voter_id)          -- one vote per user per PR — this is what stops
-                                          -- a 50kg user's fake 200kg lift from just sitting
-                                          -- there unchallenged, and stops brigading too
-);
-
-CREATE OR REPLACE FUNCTION recompute_pr_verification() RETURNS TRIGGER AS $$
-DECLARE
-  target_pr_id UUID := COALESCE(NEW.pr_id, OLD.pr_id);
-  g INT;
-  f INT;
-BEGIN
-  SELECT
-    COUNT(*) FILTER (WHERE vote = 'genuine'),
-    COUNT(*) FILTER (WHERE vote = 'flag')
-  INTO g, f
-  FROM pr_votes WHERE pr_id = target_pr_id;
-
-  UPDATE prs SET
-    genuine_votes = g,
-    flag_votes = f,
-    verification_status = (CASE
-      WHEN f >= 5 AND f > g * 2 THEN 'disputed'
-      WHEN g >= 5 THEN 'genuine'
-      ELSE 'unverified'
-    END)::pr_verification_enum
-  WHERE id = target_pr_id;
-
-  RETURN NULL;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_pr_vote_change
-AFTER INSERT OR UPDATE OR DELETE ON pr_votes
-FOR EACH ROW EXECUTE FUNCTION recompute_pr_verification();
-
--- NOTE: verification_status intentionally never affects RP — RP only comes
--- from the rp_ledger (session completion / streaks). A disputed PR just
--- displays a "disputed" badge on the profile/feed instead of being deleted.
 
 -- ============================================================================
 -- POSTS & LIKES (confirmed Instagram-style feed — photo + caption allowed)
@@ -518,3 +469,22 @@ CREATE UNIQUE INDEX idx_leaderboard_user ON leaderboard_snapshot (user_id);
 
 -- Run on a schedule (cron / pg_cron):
 --   REFRESH MATERIALIZED VIEW CONCURRENTLY leaderboard_snapshot;
+
+-- ============================================================================
+-- AI WEEKLY SUMMARIES
+-- ============================================================================
+-- Stores compressed JSON context for the AI when the raw plans are deleted.
+
+CREATE TABLE ai_weekly_summaries (
+  id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id              UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  plan_id              UUID REFERENCES plans(id) ON DELETE SET NULL, 
+  week_start_date      DATE NOT NULL,
+  week_end_date        DATE NOT NULL,
+  summary_json         JSONB NOT NULL,
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (user_id, week_start_date)
+);
+
+CREATE INDEX idx_ai_weekly_summaries_user ON ai_weekly_summaries (user_id, week_start_date DESC);
+
