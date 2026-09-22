@@ -44,11 +44,21 @@ const registerUser = async ({
   name,
   email,
   password,
+  username,
   sports = [],
   injuries = [],
   ...otherProps
 }) => {
-  // 1. Duplicate email check
+  // 1. Duplicate username check
+  const existingUserByUsername = await authModel.findUserByUsername(username);
+  if (existingUserByUsername) {
+    const error = new Error('A user with this username already exists');
+    error.code = 'USERNAME_ALREADY_EXISTS';
+    error.statusCode = 409;
+    throw error;
+  }
+
+  // 1b. Duplicate email check
   const existingUser = await authModel.findUserByEmail(email);
   if (existingUser) {
     const error = new Error('A user with this email address already exists');
@@ -70,6 +80,7 @@ const registerUser = async ({
       {
         name,
         email,
+        username,
         password_hash: passwordHash,
         ...otherProps,
       },
@@ -242,6 +253,28 @@ const getCurrentUser = async (userId) => {
   return sanitizedUser;
 };
 
+/**
+ * Checks if a username is available
+ * @param {string} username
+ * @returns {Promise<{ available: boolean }>}
+ */
+const checkUsernameAvailability = async (username) => {
+  if (!username) return { available: false };
+  const user = await authModel.findUserByUsername(username);
+  return { available: !user };
+};
+
+/**
+ * Checks if an email is available
+ * @param {string} email
+ * @returns {Promise<{ available: boolean }>}
+ */
+const checkEmailAvailability = async (email) => {
+  if (!email) return { available: false };
+  const user = await authModel.findUserByEmail(email);
+  return { available: !user };
+};
+
 module.exports = {
   generateAuthTokens,
   registerUser,
@@ -249,4 +282,6 @@ module.exports = {
   refreshAccessToken,
   logoutUser,
   getCurrentUser,
+  checkUsernameAvailability,
+  checkEmailAvailability,
 };

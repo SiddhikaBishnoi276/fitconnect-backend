@@ -80,10 +80,44 @@ const getMe = async (req, res, next) => {
   }
 };
 
+/**
+ * Controller handler to check if a username is available
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ */
+const checkUsername = async (req, res, next) => {
+  try {
+    const { username } = req.query;
+    const data = await authService.checkUsernameAvailability(username);
+    return sendSuccess(res, data, 'Username availability check complete', 200);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * Controller handler to check if an email is available
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ */
+const checkEmail = async (req, res, next) => {
+  try {
+    const { email } = req.query;
+    const data = await authService.checkEmailAvailability(email);
+    return sendSuccess(res, data, 'Email availability check complete', 200);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   signup,
   login,
   refreshToken,
   logout,
   getMe,
+  checkUsername,
+  checkEmail,
 };

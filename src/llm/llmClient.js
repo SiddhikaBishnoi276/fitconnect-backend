@@ -33,20 +33,30 @@ const generateText = async (prompt, options = {}) => {
   let lastError = null;
 
   for (const modelName of modelCandidates) {
-    try {
-      const model = genAI.getGenerativeModel({
-        model: modelName,
-        generationConfig: {
-          temperature: options.temperature ?? 0.7,
-          maxOutputTokens: options.maxOutputTokens ?? 2048,
-        },
-      });
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      return response.text();
-    } catch (error) {
-      lastError = error;
-      console.warn(`⚠️ [Gemini Fallback - ${modelName} failed]: ${error.message}. Trying next candidate if available...`);
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          generationConfig: {
+            temperature: options.temperature ?? 0.7,
+            maxOutputTokens: options.maxOutputTokens ?? 2048,
+          },
+        });
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        return response.text();
+      } catch (error) {
+        lastError = error;
+        if (retries > 1) {
+          console.warn(`⚠️ [Gemini Retry] ${modelName} failed. Retrying in 6s... (${retries - 1} attempts left)`);
+          await new Promise(resolve => setTimeout(resolve, 6000));
+          retries--;
+        } else {
+          console.warn(`⚠️ [Gemini Model Switch - ${modelName} failed]: ${error.message}. Trying next candidate if available...`);
+          break;
+        }
+      }
     }
   }
 
@@ -81,19 +91,29 @@ const generateJSON = async (prompt, options = {}) => {
   }
 
   for (const modelName of modelCandidates) {
-    try {
-      const model = genAI.getGenerativeModel({
-        model: modelName,
-        generationConfig,
-      });
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          generationConfig,
+        });
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
-      return JSON.parse(text);
-    } catch (error) {
-      lastError = error;
-      console.warn(`⚠️ [Gemini JSON Fallback - ${modelName} failed]: ${error.message}. Trying next candidate if available...`);
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
+        return JSON.parse(text);
+      } catch (error) {
+        lastError = error;
+        if (retries > 1) {
+          console.warn(`⚠️ [Gemini Retry] ${modelName} failed. Retrying in 6s... (${retries - 1} attempts left)`);
+          await new Promise(resolve => setTimeout(resolve, 6000));
+          retries--;
+        } else {
+          console.warn(`⚠️ [Gemini Model Switch - ${modelName} failed]: ${error.message}. Trying next candidate if available...`);
+          break;
+        }
+      }
     }
   }
 
@@ -112,7 +132,7 @@ const generateJSON = async (prompt, options = {}) => {
  */
 const generate = async (systemPrompt, userPrompt, options = {}) => {
   const combinedPrompt = systemPrompt ? `${systemPrompt}\n\n${userPrompt}` : userPrompt;
-  
+
   const callPromise = (async () => {
     if (options.expectJSON) {
       const json = await generateJSON(combinedPrompt, options);

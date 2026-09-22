@@ -17,6 +17,21 @@ const findUserByEmail = async (email, client = null) => {
 };
 
 /**
+ * Finds a user by username (case-insensitive)
+ * @param {string} username
+ * @param {import('pg').PoolClient} [client]
+ * @returns {Promise<object|null>}
+ */
+const findUserByUsername = async (username, client = null) => {
+  const executor = client || db;
+  const result = await executor.query(
+    'SELECT * FROM users WHERE LOWER(username) = LOWER($1);',
+    [username.trim()]
+  );
+  return result.rows[0] || null;
+};
+
+/**
  * Finds a user by ID without password_hash and includes sports & injuries
  * @param {string} userId
  * @param {import('pg').PoolClient} [client]
@@ -266,6 +281,7 @@ const deleteDeviceToken = async (refreshToken, client = null) => {
 
 module.exports = {
   findUserByEmail,
+  findUserByUsername,
   findUserById,
   createUser,
   addUserSports,

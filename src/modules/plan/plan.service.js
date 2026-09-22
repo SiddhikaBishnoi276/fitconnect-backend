@@ -5,106 +5,7 @@ const planModel = require('./plan.model');
 const planPrompts = require('./plan.prompts');
 const ruleEngine = require('../ruleEngine/ruleEngine.service');
 
-/**
- * Fallback template generator when LLM key is missing or offline
- * @param {object} profile 
- * @returns {object}
- */
-const generateFallbackPlan = (profile = {}) => {
-  const sportsStr = Array.isArray(profile.sports) && profile.sports.length > 0 
-    ? profile.sports.map(s => s.name || s.slug).join(' & ') 
-    : 'Strength & Conditioning';
-
-  const preferredDaysCount = profile.workout_days_count || 4;
-
-  const days = [
-    {
-      day_index: 1,
-      day_label: 'Mon',
-      title: 'Upper Body Power & Core',
-      type: preferredDaysCount >= 1 ? 'workout' : 'rest',
-      estimated_duration_min: profile.time_budget_minutes || 50,
-      intensity: 'High',
-      is_rest_day: preferredDaysCount < 1,
-      exercises: [
-        { exercise_name: 'Bench Press', sets: 4, reps: '8-10', notes: 'Maintain strict control on tempo', is_injury_substituted: false },
-        { exercise_name: 'Plank Hold', sets: 3, reps: '60s hold', notes: 'Engage core stability', is_injury_substituted: false }
-      ]
-    },
-    {
-      day_index: 2,
-      day_label: 'Tue',
-      title: 'Lower Body Strength',
-      type: preferredDaysCount >= 2 ? 'workout' : 'rest',
-      estimated_duration_min: profile.time_budget_minutes || 55,
-      intensity: 'High',
-      is_rest_day: preferredDaysCount < 2,
-      exercises: [
-        { exercise_name: 'Barbell Back Squat', sets: 4, reps: '8-10', notes: 'Focus on full depth', is_injury_substituted: false }
-      ]
-    },
-    {
-      day_index: 3,
-      day_label: 'Wed',
-      title: 'Active Mobility & Recovery',
-      type: 'active_recovery',
-      estimated_duration_min: 30,
-      intensity: 'Low',
-      is_rest_day: true,
-      exercises: []
-    },
-    {
-      day_index: 4,
-      day_label: 'Thu',
-      title: 'Agility & Interval Cardio',
-      type: preferredDaysCount >= 3 ? 'workout' : 'rest',
-      estimated_duration_min: profile.time_budget_minutes || 45,
-      intensity: 'High',
-      is_rest_day: preferredDaysCount < 3,
-      exercises: [
-        { exercise_name: 'Sprint Intervals', sets: 5, reps: '50m sprints', notes: 'Explosive acceleration', is_injury_substituted: false }
-      ]
-    },
-    {
-      day_index: 5,
-      day_label: 'Fri',
-      title: 'Full Body Athletic Conditioning',
-      type: preferredDaysCount >= 4 ? 'workout' : 'rest',
-      estimated_duration_min: profile.time_budget_minutes || 50,
-      intensity: 'Medium',
-      is_rest_day: preferredDaysCount < 4,
-      exercises: [
-        { exercise_name: 'Football Agility Cones', sets: 4, reps: '5 rounds', notes: 'Quick directional change', is_injury_substituted: false }
-      ]
-    },
-    {
-      day_index: 6,
-      day_label: 'Sat',
-      title: 'Light Dynamic Sport Drills',
-      type: preferredDaysCount >= 5 ? 'workout' : 'active_recovery',
-      estimated_duration_min: 40,
-      intensity: 'Medium',
-      is_rest_day: preferredDaysCount < 5,
-      exercises: []
-    },
-    {
-      day_index: 7,
-      day_label: 'Sun',
-      title: 'Full Rest & Recovery',
-      type: 'rest',
-      estimated_duration_min: 0,
-      intensity: 'Low',
-      is_rest_day: true,
-      exercises: []
-    }
-  ];
-
-  return {
-    title: `Athlete ${sportsStr} Performance Plan`,
-    description: `Personalized 7-day training plan optimized for ${sportsStr} and ${profile.equipment || 'gym'} equipment.`,
-    days,
-  };
-};
+// Fallback plan removed
 
 /**
  * Generate a new 7-day adaptive workout plan using LLM + ruleEngine
@@ -122,22 +23,25 @@ const generatePlan = async (userId) => {
 
   if (llmClient.isGeminiConfigured()) {
     try {
-      rawPlanJSON = await llmClient.generateJSON(prompt);
+      console.log('🔄 [LLM]: Sending prompt to Gemini API to generate plan...');
+      const res = await llmClient.generate(null, prompt, { expectJSON: true, timeoutMs: 60000 });
+      rawPlanJSON = res.json;
+      console.log('✅ [LLM SUCCESS]: Plan successfully generated via Gemini API (No hardcoding)!');
     } catch (llmErr) {
-      console.warn('⚠️ [LLM Generation Fallback]: Gemini call failed, using ruleEngine fallback plan:', llmErr.message);
-      rawPlanJSON = generateFallbackPlan(profile);
+      console.error('❌ [LLM ERROR]: Gemini API failed to generate plan:', llmErr.message);
+      throw llmErr;
     }
   } else {
-    console.warn('⚠️ [LLM Config Warning]: GEMINI_API_KEY not set. Using ruleEngine fallback plan for generation.');
-    rawPlanJSON = generateFallbackPlan(profile);
+    console.error('❌ [LLM Config Error]: GEMINI_API_KEY not set.');
+    throw new Error('GEMINI_API_KEY not set. Cannot generate plan.');
   }
 
   // Enforce array structure safety
   if (!rawPlanJSON || typeof rawPlanJSON !== 'object') {
-    rawPlanJSON = generateFallbackPlan(profile);
+    throw new Error('LLM returned invalid JSON structure (not an object).');
   }
   if (!Array.isArray(rawPlanJSON.days) || rawPlanJSON.days.length === 0) {
-    rawPlanJSON.days = generateFallbackPlan(profile).days;
+    throw new Error('LLM returned invalid JSON structure (no days array).');
   }
 
   // c. Verify and substitute injuries using RuleEngine
@@ -180,13 +84,15 @@ const regeneratePlan = async (userId, updatedSettings = null) => {
     let rawPlanJSON;
     if (llmClient.isGeminiConfigured()) {
       try {
-        rawPlanJSON = await llmClient.generateJSON(prompt);
+        const res = await llmClient.generate(null, prompt, { expectJSON: true, timeoutMs: 60000 });
+        rawPlanJSON = res.json;
       } catch (llmErr) {
-        console.warn('⚠️ [LLM Regeneration Fallback]: Gemini call failed, using ruleEngine fallback:', llmErr.message);
-        rawPlanJSON = generateFallbackPlan(mergedProfile);
+        console.error('❌ [LLM Regeneration Error]: Gemini call failed:', llmErr.message);
+        throw llmErr;
       }
     } else {
-      rawPlanJSON = generateFallbackPlan(mergedProfile);
+      console.error('❌ [LLM Config Error]: GEMINI_API_KEY not set.');
+      throw new Error('GEMINI_API_KEY not set. Cannot regenerate plan.');
     }
 
     const validatedPlanJSON = ruleEngine.validateAndSubstituteInjuries(rawPlanJSON, mergedProfile.injuries, catalog);

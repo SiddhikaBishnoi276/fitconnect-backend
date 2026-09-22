@@ -196,7 +196,7 @@ async function getMealDetail(mealId) {
   try {
     const result = await llmClient.generate(system, user, {
       expectJSON: true,
-      timeoutMs: 15000
+      timeoutMs: 60000
     });
 
     if (result?.json && validateElaboration(result.json)) {

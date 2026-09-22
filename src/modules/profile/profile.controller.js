@@ -58,6 +58,32 @@ const updatePreferences = async (req, res, next) => {
 };
 
 /**
+ * Get user preferences
+ * @route GET /api/v1/profile/preferences
+ */
+const getPreferences = async (req, res, next) => {
+  try {
+    const preferences = await profileService.getPreferences(req.user.id);
+    return sendSuccess(res, preferences, 'Preferences retrieved successfully');
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * Get user injuries
+ * @route GET /api/v1/profile/injuries
+ */
+const getInjuries = async (req, res, next) => {
+  try {
+    const injuries = await profileService.getInjuries(req.user.id);
+    return sendSuccess(res, injuries, 'Injuries retrieved successfully');
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
  * Get personal records (best per exercise)
  * @route GET /api/v1/profile/records
  */
@@ -112,4 +138,6 @@ module.exports = {
   getRecords,
   addRecord,
   getUserProfile,
+  getPreferences,
+  getInjuries,
 };

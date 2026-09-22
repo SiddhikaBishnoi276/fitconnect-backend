@@ -27,11 +27,25 @@ router.patch('/me', authGuard, profileController.updateMe);
 router.put('/injuries', authGuard, profileController.updateInjuries);
 
 /**
+ * @route   GET /api/v1/profile/injuries
+ * @desc    Get user injuries
+ * @access  Protected
+ */
+router.get('/injuries', authGuard, profileController.getInjuries);
+
+/**
  * @route   PATCH /api/v1/profile/preferences
  * @desc    Update user diet, cuisine, and privacy preferences
  * @access  Protected
  */
 router.patch('/preferences', authGuard, profileController.updatePreferences);
+
+/**
+ * @route   GET /api/v1/profile/preferences
+ * @desc    Get user preferences
+ * @access  Protected
+ */
+router.get('/preferences', authGuard, profileController.getPreferences);
 
 /**
  * @route   GET /api/v1/profile/records

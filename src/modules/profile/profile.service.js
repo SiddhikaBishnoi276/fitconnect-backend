@@ -192,6 +192,15 @@ const replaceInjuries = async (userId, injuriesArray) => {
 };
 
 /**
+ * Fetches user injuries
+ * @param {string} userId
+ * @returns {Promise<Array<object>>}
+ */
+const getInjuries = async (userId) => {
+  return await profileModel.getUserInjuries(userId);
+};
+
+/**
  * Fetches user preference settings
  * @param {string} userId
  * @returns {Promise<object>}
@@ -377,4 +386,5 @@ module.exports = {
   getPersonalRecords,
   addPersonalRecord,
   getOtherUserProfile,
+  getInjuries,
 };

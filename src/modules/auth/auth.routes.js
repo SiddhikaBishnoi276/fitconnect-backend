@@ -46,4 +46,18 @@ router.get('/me', authGuard, authController.getMe);
  */
 router.post('/logout', authGuard, authController.logout);
 
+/**
+ * @route   GET /api/v1/auth/check-username
+ * @desc    Check if username is available
+ * @access  Public
+ */
+router.get('/check-username', authController.checkUsername);
+
+/**
+ * @route   GET /api/v1/auth/check-email
+ * @desc    Check if email is available
+ * @access  Public
+ */
+router.get('/check-email', authController.checkEmail);
+
 module.exports = router;
