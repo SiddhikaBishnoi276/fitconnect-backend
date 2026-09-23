@@ -267,6 +267,14 @@ const getActivePlanWithDetails = async (userId) => {
   // Day labels lookup
   const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+  // Calculate current active day (Day 1..7) based on calendar days elapsed since plan creation
+  const planCreatedAt = new Date(plan.created_at || Date.now());
+  const now = new Date();
+  const startMid = new Date(planCreatedAt.getFullYear(), planCreatedAt.getMonth(), planCreatedAt.getDate());
+  const nowMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const elapsedDays = Math.max(0, Math.floor((nowMid.getTime() - startMid.getTime()) / (1000 * 60 * 60 * 24)));
+  const currentDayIndex = Math.min(elapsedDays + 1, 7);
+
   const formattedDays = [];
   for (const dayRow of planDays) {
     const exRes = await db.query(
@@ -291,7 +299,8 @@ const getActivePlanWithDetails = async (userId) => {
     formattedDays.push({
       plan_day_id: dayRow.id,
       day_index: dayRow.day_index,
-      day_label: contextDay?.day_label || dayLabels[(dayRow.day_index - 1) % 7],
+      day_label: 'Day ' + dayRow.day_index,
+      is_today: dayRow.day_index === currentDayIndex,
       title: dayRow.session_type,
       type: contextDay?.type || (dayRow.session_type.toLowerCase().includes('rest') ? 'rest' : 'workout'),
       estimated_duration_min: dayRow.estimated_duration_min,
@@ -321,6 +330,7 @@ const getActivePlanWithDetails = async (userId) => {
     user_id: plan.user_id,
     week_start_date: plan.week_start_date,
     status: plan.status,
+    current_day_index: currentDayIndex,
     title: genContext.title || 'Athlete Dynamic Workout Plan',
     description: genContext.description || 'Weekly customized training focus',
     created_at: plan.created_at,
