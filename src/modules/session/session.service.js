@@ -147,7 +147,25 @@ const createSession = async (userId, payload) => {
     throw err;
   }
 
-  if (planDay.sport_id === null || (planDay.session_type && planDay.session_type.toLowerCase().includes('rest'))) {
+  let isRestDay = false;
+  if (planDay.generation_context) {
+    const context = typeof planDay.generation_context === 'string' 
+      ? JSON.parse(planDay.generation_context) 
+      : planDay.generation_context;
+    
+    if (context && Array.isArray(context.days)) {
+      const dayCtx = context.days.find(d => d.day_index === planDay.day_index);
+      if (dayCtx) {
+        // Use the explicit flags instead of string matching the title which might be "Active Rest" or similar
+        isRestDay = Boolean(dayCtx.is_rest_day) || (dayCtx.type === 'rest');
+      }
+    }
+  } else {
+    // Fallback for any older plans without generation_context
+    isRestDay = planDay.session_type && planDay.session_type.toLowerCase().includes('rest');
+  }
+
+  if (isRestDay) {
     const err = new Error('Cannot start a session on a rest day');
     err.statusCode = 400;
     throw err;
@@ -163,7 +181,16 @@ const createSession = async (userId, payload) => {
     throw err;
   }
 
-  // 3. Create session record
+  // 3. Check user has not already completed a session for this plan day
+  const completedSession = await sessionModel.findCompletedSessionByPlanDay(userId, plan_day_id);
+  if (completedSession) {
+    const err = new Error("You have already completed today's workout session!");
+    err.statusCode = 400;
+    err.code = 'SESSION_ALREADY_COMPLETED';
+    throw err;
+  }
+
+  // 4. Create session record
   const session = await sessionModel.createSession({
     userId,
     planDayId: plan_day_id,
@@ -179,6 +206,7 @@ const createSession = async (userId, payload) => {
   const exercises = computeSessionExerciseList(session, planDayExercises, []);
 
   return {
+    id: session.id,
     session_id: session.id,
     exercises,
   };
@@ -206,6 +234,7 @@ const getActiveSession = async (userId) => {
   }
 
   return {
+    id: activeSession.id,
     session_id: activeSession.id,
     plan_day_id: activeSession.plan_day_id,
     sleep_quality: activeSession.sleep_quality,
@@ -324,11 +353,14 @@ const submitExerciseFeedback = async (userId, sessionId, exerciseId, payload) =>
   const remainingExercises = recomputedAll.filter(e => e.status === 'pending');
 
   return {
+    id: sessionId,
+    session_id: sessionId,
     recorded: {
       exercise_id: exerciseId,
       order_index: Number(order_index),
       feedback,
     },
+    exercises: remainingExercises,
     remaining_exercises: remainingExercises,
   };
 };
@@ -336,9 +368,7 @@ const submitExerciseFeedback = async (userId, sessionId, exerciseId, payload) =>
 /**
  * POST /sessions/:id/complete - End session, stats, PR detection, RP + streak
  */
-const completeSession = async (userId, sessionId, payload) => {
-  const durationMin = typeof payload.duration_min === 'number' ? payload.duration_min : parseInt(payload.duration_min, 10) || 0;
-
+const completeSession = async (userId, sessionId, payload = {}) => {
   const session = await sessionModel.getSessionById(sessionId);
   if (!session || session.user_id !== userId) {
     const err = new Error('Session not found');
@@ -351,6 +381,27 @@ const completeSession = async (userId, sessionId, payload) => {
     err.statusCode = 409;
     throw err;
   }
+
+  // Minimum session duration check: 5 minutes (300 seconds)
+  const sessionStartTime = new Date(session.created_at).getTime();
+  const elapsedSec = Math.floor((Date.now() - sessionStartTime) / 1000);
+  const MIN_SESSION_DURATION_SEC = 300; // 5 minutes
+
+  // 15 seconds buffer for client-server clock/network drift
+  if (elapsedSec < (MIN_SESSION_DURATION_SEC - 15)) {
+    const remainingSec = Math.max(1, MIN_SESSION_DURATION_SEC - elapsedSec);
+    const remainingMin = Math.ceil(remainingSec / 60);
+    const err = new Error(`Minimum workout duration is 5 minutes. Please continue for another ${remainingMin} minute(s).`);
+    err.statusCode = 400;
+    err.code = 'SESSION_TOO_SHORT';
+    err.remaining_seconds = remainingSec;
+    throw err;
+  }
+
+  const calculatedDurationMin = Math.max(5, Math.round(elapsedSec / 60));
+  const durationMin = typeof payload.duration_min === 'number' && payload.duration_min >= 5
+    ? payload.duration_min
+    : calculatedDurationMin;
 
   const feedbackRows = await sessionModel.getSessionFeedbackRows(sessionId);
   const planDayExercises = await sessionModel.getPlanDayExercises(session.plan_day_id);
@@ -553,3 +604,4 @@ module.exports = {
   completeSession,
   cancelSession,
 };
+

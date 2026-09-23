@@ -9,7 +9,7 @@ const db = require('../../config/db');
  */
 const getPlanDayById = async (planDayId, userId) => {
   const res = await db.query(
-    `SELECT pd.id, pd.plan_id, pd.day_index, pd.sport_id, pd.session_type, pd.estimated_duration_min, pd.intensity
+    `SELECT pd.id, pd.plan_id, pd.day_index, pd.sport_id, pd.session_type, pd.estimated_duration_min, pd.intensity, p.generation_context
      FROM plan_days pd
      JOIN plans p ON pd.plan_id = p.id
      WHERE pd.id = $1 AND p.user_id = $2 AND p.status = 'active'`,
@@ -31,6 +31,23 @@ const findActiveSessionByUserId = async (userId) => {
      WHERE user_id = $1 AND status = 'in_progress'
      LIMIT 1`,
     [userId]
+  );
+  return res.rows[0] || null;
+};
+
+/**
+ * Find completed session for user and plan_day_id
+ * @param {string} userId 
+ * @param {string} planDayId 
+ * @returns {Promise<object|null>}
+ */
+const findCompletedSessionByPlanDay = async (userId, planDayId) => {
+  const res = await db.query(
+    `SELECT id, user_id, plan_day_id, date, status, fully_completed, created_at, completed_at
+     FROM sessions
+     WHERE user_id = $1 AND plan_day_id = $2 AND status = 'completed'
+     LIMIT 1`,
+    [userId, planDayId]
   );
   return res.rows[0] || null;
 };
@@ -342,6 +359,7 @@ const deleteSession = async (sessionId) => {
 module.exports = {
   getPlanDayById,
   findActiveSessionByUserId,
+  findCompletedSessionByPlanDay,
   getSessionById,
   createSession,
   getPlanDayExercises,

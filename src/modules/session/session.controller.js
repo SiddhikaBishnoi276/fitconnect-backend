@@ -10,6 +10,7 @@ const createSessionHandler = async (req, res, next) => {
   try {
     const userId = req.user.id;
     const sessionData = await sessionService.createSession(userId, req.body);
+    console.log('[DEBUG] createSession response data:', JSON.stringify(sessionData));
     return sendSuccess(res, sessionData, 'Session started successfully', 201);
   } catch (error) {
     if (error.code === 'SESSION_IN_PROGRESS') {

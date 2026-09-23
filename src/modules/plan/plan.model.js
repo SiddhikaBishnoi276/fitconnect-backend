@@ -253,11 +253,14 @@ const getActivePlanWithDetails = async (userId) => {
     const sessionRes = await db.query(
       `SELECT plan_day_id, status, fully_completed 
        FROM sessions 
-       WHERE user_id = $1 AND plan_day_id = ANY($2)`,
+       WHERE user_id = $1 AND plan_day_id = ANY($2)
+       ORDER BY (status = 'completed') DESC, (fully_completed = true) DESC, created_at DESC`,
       [userId, dayIds]
     );
     sessionRes.rows.forEach(s => {
-      sessionMap.set(s.plan_day_id, s);
+      if (!sessionMap.has(s.plan_day_id) || s.status === 'completed' || s.fully_completed) {
+        sessionMap.set(s.plan_day_id, s);
+      }
     });
   }
 
