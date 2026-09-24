@@ -10,6 +10,9 @@ const rateLimiter = require('./middleware/rateLimiter');
 
 const app = express();
 
+// Trust reverse proxy headers (Required for Render, Heroku, AWS, Nginx to get real client IP)
+app.set('trust proxy', 1);
+
 // Security & Parsing Middlewares
 app.use(helmet());
 app.use(cors());
