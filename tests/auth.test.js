@@ -2,11 +2,14 @@ const request = require('supertest');
 const app = require('../src/app');
 const { pool } = require('../src/config/db');
 
+jest.setTimeout(20000);
+
 describe('Auth Module Flow — Automated Test Suite', () => {
-  const timestamp = Date.now();
+  const ts = Date.now().toString().slice(-8);
   const testUser = {
     name: 'Test Runner',
-    email: `test.athlete.${timestamp}@example.com`,
+    username: `runner_${ts}`,
+    email: `athlete.${ts}@example.com`,
     password: 'Password@12345',
     age: 26,
     weight_kg: 72.0,
@@ -53,11 +56,11 @@ describe('Auth Module Flow — Automated Test Suite', () => {
     expect(response.body.success).toBe(true);
     expect(response.body.message).toBe('Signup successful');
     expect(response.body.data).toBeDefined();
-    expect(response.body.data.id).toBeDefined();
-    expect(response.body.data.email).toBe(testUser.email.toLowerCase());
-    expect(response.body.data.password_hash).toBeUndefined();
-    expect(response.body.data.sports).toHaveLength(1);
-    expect(response.body.data.injuries).toHaveLength(1);
+    expect(response.body.data.user.id).toBeDefined();
+    expect(response.body.data.user.email).toBe(testUser.email.toLowerCase());
+    expect(response.body.data.user.password_hash).toBeUndefined();
+    expect(response.body.data.user.sports).toHaveLength(1);
+    expect(response.body.data.user.injuries).toHaveLength(1);
   });
 
   // 2. Login -> tokens milte hain
@@ -149,4 +152,79 @@ describe('Auth Module Flow — Automated Test Suite', () => {
     expect(response.body.error.code).toBe('INVALID_REFRESH_TOKEN');
     expect(response.body.error.message).toBe('Invalid or expired refresh token');
   });
+
+  // 7. Forgot Password -> sends OTP
+  test('7. POST /api/v1/auth/forgot-password -> Sends OTP to registered email', async () => {
+    const response = await request(app)
+      .post('/api/v1/auth/forgot-password')
+      .send({ email: testUser.email })
+      .expect(200);
+
+    expect(response.body.success).toBe(true);
+    expect(response.body.message).toBe('Password reset OTP has been sent to your email');
+    expect(response.body.data.email).toBe(testUser.email.toLowerCase());
+    expect(response.body.data.expiresInMinutes).toBe(10);
+  });
+
+  // 8. Verify OTP -> Fails with invalid OTP
+  test('8. POST /api/v1/auth/verify-otp -> Fails with INVALID_OTP when code is wrong', async () => {
+    const response = await request(app)
+      .post('/api/v1/auth/verify-otp')
+      .send({ email: testUser.email, otp: '000000' })
+      .expect(400);
+
+    expect(response.body.success).toBe(false);
+    expect(response.body.error.code).toBe('INVALID_OTP');
+  });
+
+  // 9. Reset Password -> Fails with invalid OTP, succeeds when valid
+  test('9. POST /api/v1/auth/reset-password -> Resets password and allows login with new password', async () => {
+    const otpManager = require('../src/utils/otpManager');
+    // Set a known OTP for test
+    const { otp } = otpManager.createOtp(testUser.email);
+    const newPassword = 'NewSecretPassword@2026';
+
+    // 9a. Verify OTP
+    const verifyRes = await request(app)
+      .post('/api/v1/auth/verify-otp')
+      .send({ email: testUser.email, otp })
+      .expect(200);
+    expect(verifyRes.body.success).toBe(true);
+    expect(verifyRes.body.data.valid).toBe(true);
+
+    // 9b. Reset password with OTP
+    const resetRes = await request(app)
+      .post('/api/v1/auth/reset-password')
+      .send({
+        email: testUser.email,
+        otp,
+        newPassword
+      })
+      .expect(200);
+
+    expect(resetRes.body.success).toBe(true);
+    expect(resetRes.body.message).toBe('Password has been reset successfully');
+
+    // 9c. Login with old password -> should fail
+    const oldLoginRes = await request(app)
+      .post('/api/v1/auth/login')
+      .send({
+        email: testUser.email,
+        password: testUser.password
+      })
+      .expect(401);
+    expect(oldLoginRes.body.success).toBe(false);
+
+    // 9d. Login with new password -> should succeed
+    const newLoginRes = await request(app)
+      .post('/api/v1/auth/login')
+      .send({
+        email: testUser.email,
+        password: newPassword
+      })
+      .expect(200);
+    expect(newLoginRes.body.success).toBe(true);
+    expect(newLoginRes.body.data.accessToken).toBeDefined();
+  });
 });
+

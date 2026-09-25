@@ -7,6 +7,9 @@ const {
   validateSignupInput,
   validateLoginInput,
   validateRefreshTokenInput,
+  validateForgotPasswordInput,
+  validateVerifyOtpInput,
+  validateResetPasswordInput,
 } = require('../../utils/validators');
 
 const router = express.Router();
@@ -31,6 +34,27 @@ router.post('/login', validateRequest(validateLoginInput), authController.login)
  * @access  Public
  */
 router.post('/refresh-token', validateRequest(validateRefreshTokenInput), authController.refreshToken);
+
+/**
+ * @route   POST /api/v1/auth/forgot-password
+ * @desc    Send password reset OTP to user email
+ * @access  Public
+ */
+router.post('/forgot-password', validateRequest(validateForgotPasswordInput), authController.forgotPassword);
+
+/**
+ * @route   POST /api/v1/auth/verify-otp
+ * @desc    Verify 6-digit OTP for password reset
+ * @access  Public
+ */
+router.post('/verify-otp', validateRequest(validateVerifyOtpInput), authController.verifyOtp);
+
+/**
+ * @route   POST /api/v1/auth/reset-password
+ * @desc    Reset password using OTP
+ * @access  Public
+ */
+router.post('/reset-password', validateRequest(validateResetPasswordInput), authController.resetPassword);
 
 /**
  * @route   GET /api/v1/auth/me
@@ -61,3 +85,4 @@ router.get('/check-username', authController.checkUsername);
 router.get('/check-email', authController.checkEmail);
 
 module.exports = router;
+

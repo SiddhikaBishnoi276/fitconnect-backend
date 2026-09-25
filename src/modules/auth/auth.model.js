@@ -279,6 +279,41 @@ const deleteDeviceToken = async (refreshToken, client = null) => {
   return result.rowCount;
 };
 
+/**
+ * Updates a user's password hash in the users table
+ * @param {string} userId
+ * @param {string} passwordHash
+ * @param {import('pg').PoolClient} [client]
+ * @returns {Promise<object>}
+ */
+const updateUserPassword = async (userId, passwordHash, client = null) => {
+  const executor = client || db;
+  const queryText = `
+    UPDATE users
+    SET password_hash = $1, updated_at = NOW()
+    WHERE id = $2
+    RETURNING id, name, username, email;
+  `;
+  const result = await executor.query(queryText, [passwordHash, userId]);
+  return result.rows[0] || null;
+};
+
+/**
+ * Deletes all active device tokens for a specific user (logs out all devices)
+ * @param {string} userId
+ * @param {import('pg').PoolClient} [client]
+ * @returns {Promise<number>}
+ */
+const deleteAllDeviceTokensForUser = async (userId, client = null) => {
+  const executor = client || db;
+  const queryText = `
+    DELETE FROM device_tokens
+    WHERE user_id = $1;
+  `;
+  const result = await executor.query(queryText, [userId]);
+  return result.rowCount;
+};
+
 module.exports = {
   findUserByEmail,
   findUserByUsername,
@@ -289,4 +324,7 @@ module.exports = {
   createDeviceToken,
   findDeviceTokenByRefreshToken,
   deleteDeviceToken,
+  updateUserPassword,
+  deleteAllDeviceTokensForUser,
 };
+

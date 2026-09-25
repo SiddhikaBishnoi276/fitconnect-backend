@@ -4,6 +4,8 @@ const jwt = require('jsonwebtoken');
 const db = require('../../config/db');
 const env = require('../../config/env.config');
 const authModel = require('./auth.model');
+const otpManager = require('../../utils/otpManager');
+const emailService = require('../../utils/emailService');
 
 const JWT_SECRET = env.JWT_SECRET;
 const JWT_REFRESH_SECRET = env.JWT_REFRESH_SECRET;
@@ -275,6 +277,122 @@ const checkEmailAvailability = async (email) => {
   return { available: !user };
 };
 
+/**
+ * Initiates forgot password flow by generating and emailing a 6-digit OTP
+ * @param {object} param0
+ * @param {string} param0.email
+ * @returns {Promise<{ email: string, expiresInMinutes: number }>}
+ */
+const forgotPassword = async ({ email }) => {
+  if (!email) {
+    const error = new Error('Email is required');
+    error.code = 'EMAIL_REQUIRED';
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+  const user = await authModel.findUserByEmail(normalizedEmail);
+
+  if (!user) {
+    const error = new Error('No user account found with this email address');
+    error.code = 'USER_NOT_FOUND';
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (user.auth_provider && user.auth_provider !== 'email' && !user.password_hash) {
+    const error = new Error(`This account is registered via ${user.auth_provider}. Please sign in using ${user.auth_provider}.`);
+    error.code = 'OAUTH_ACCOUNT';
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // Create OTP (stored in memory, auto expires in 10 mins)
+  const { otp } = otpManager.createOtp(normalizedEmail);
+
+  // Send OTP email
+  await emailService.sendPasswordResetOtpEmail(normalizedEmail, otp, 10);
+
+  return {
+    email: normalizedEmail,
+    expiresInMinutes: 10,
+  };
+};
+
+/**
+ * Verifies if an OTP is valid without resetting the password yet
+ * @param {object} param0
+ * @param {string} param0.email
+ * @param {string} param0.otp
+ * @returns {Promise<{ valid: boolean }>}
+ */
+const verifyOtp = async ({ email, otp }) => {
+  if (!email || !otp) {
+    const error = new Error('Email and OTP are required');
+    error.code = 'INVALID_INPUT';
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+  otpManager.verifyOtp(normalizedEmail, otp);
+
+  return {
+    email: normalizedEmail,
+    valid: true,
+  };
+};
+
+/**
+ * Resets user password using verified OTP
+ * @param {object} param0
+ * @param {string} param0.email
+ * @param {string} param0.otp
+ * @param {string} param0.newPassword
+ * @returns {Promise<object>}
+ */
+const resetPassword = async ({ email, otp, newPassword }) => {
+  if (!email || !otp || !newPassword) {
+    const error = new Error('Email, OTP, and new password are required');
+    error.code = 'INVALID_INPUT';
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+
+  // 1. Verify OTP
+  otpManager.verifyOtp(normalizedEmail, otp);
+
+  // 2. Fetch user
+  const user = await authModel.findUserByEmail(normalizedEmail);
+  if (!user) {
+    const error = new Error('User not found');
+    error.code = 'USER_NOT_FOUND';
+    error.statusCode = 404;
+    throw error;
+  }
+
+  // 3. Hash new password
+  const saltRounds = 10;
+  const newPasswordHash = await bcrypt.hash(newPassword, saltRounds);
+
+  // 4. Update password in database
+  await authModel.updateUserPassword(user.id, newPasswordHash);
+
+  // 5. Invalidate all device tokens/active sessions
+  await authModel.deleteAllDeviceTokensForUser(user.id);
+
+  // 6. Clear OTP from memory
+  otpManager.clearOtp(normalizedEmail);
+
+  return {
+    userId: user.id,
+    email: normalizedEmail,
+  };
+};
+
 module.exports = {
   generateAuthTokens,
   registerUser,
@@ -284,4 +402,8 @@ module.exports = {
   getCurrentUser,
   checkUsernameAvailability,
   checkEmailAvailability,
+  forgotPassword,
+  verifyOtp,
+  resetPassword,
 };
+

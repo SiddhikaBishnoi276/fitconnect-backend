@@ -112,6 +112,51 @@ const checkEmail = async (req, res, next) => {
   }
 };
 
+/**
+ * Controller handler for initiating forgot password OTP
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ */
+const forgotPassword = async (req, res, next) => {
+  try {
+    const data = await authService.forgotPassword(req.body);
+    return sendSuccess(res, data, 'Password reset OTP has been sent to your email', 200);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * Controller handler for verifying password reset OTP
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ */
+const verifyOtp = async (req, res, next) => {
+  try {
+    const data = await authService.verifyOtp(req.body);
+    return sendSuccess(res, data, 'OTP verified successfully', 200);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * Controller handler for completing password reset
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ */
+const resetPassword = async (req, res, next) => {
+  try {
+    const data = await authService.resetPassword(req.body);
+    return sendSuccess(res, data, 'Password has been reset successfully', 200);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   signup,
   login,
@@ -120,4 +165,8 @@ module.exports = {
   getMe,
   checkUsername,
   checkEmail,
+  forgotPassword,
+  verifyOtp,
+  resetPassword,
 };
+
