@@ -32,6 +32,14 @@ const env = {
   FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
   FIREBASE_CLIENT_EMAIL: process.env.FIREBASE_CLIENT_EMAIL,
   FIREBASE_PRIVATE_KEY: process.env.FIREBASE_PRIVATE_KEY,
+
+  // Email / SMTP Configuration (Nodemailer)
+  SMTP_HOST: process.env.SMTP_HOST || process.env.EMAIL_HOST || 'smtp.gmail.com',
+  SMTP_PORT: parseInt(process.env.SMTP_PORT || process.env.EMAIL_PORT, 10) || 465,
+  SMTP_SECURE: (process.env.SMTP_SECURE || process.env.EMAIL_SECURE) === 'true' || (parseInt(process.env.SMTP_PORT || process.env.EMAIL_PORT, 10) === 465) || (!process.env.SMTP_PORT && !process.env.EMAIL_PORT),
+  SMTP_USER: process.env.SMTP_USER || process.env.EMAIL_USER || '',
+  SMTP_PASS: process.env.SMTP_PASS || process.env.EMAIL_PASS || '',
+  EMAIL_FROM: process.env.EMAIL_FROM || (process.env.SMTP_USER ? `"FitConnect" <${process.env.SMTP_USER}>` : '"FitConnect" <noreply@fitconnect.com>'),
 };
 
 module.exports = env;

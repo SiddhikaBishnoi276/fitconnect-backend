@@ -382,24 +382,24 @@ const completeSession = async (userId, sessionId, payload = {}) => {
     throw err;
   }
 
-  // Minimum session duration check: 5 minutes (300 seconds)
+  // Minimum session duration check: 2 minutes (120 seconds)
   const sessionStartTime = new Date(session.created_at).getTime();
   const elapsedSec = Math.floor((Date.now() - sessionStartTime) / 1000);
-  const MIN_SESSION_DURATION_SEC = 300; // 5 minutes
+  const MIN_SESSION_DURATION_SEC = 120; // 2 minutes
 
   // 15 seconds buffer for client-server clock/network drift
   if (elapsedSec < (MIN_SESSION_DURATION_SEC - 15)) {
     const remainingSec = Math.max(1, MIN_SESSION_DURATION_SEC - elapsedSec);
     const remainingMin = Math.ceil(remainingSec / 60);
-    const err = new Error(`Minimum workout duration is 5 minutes. Please continue for another ${remainingMin} minute(s).`);
+    const err = new Error(`Minimum workout duration is 2 minutes. Please continue for another ${remainingMin} minute(s).`);
     err.statusCode = 400;
     err.code = 'SESSION_TOO_SHORT';
     err.remaining_seconds = remainingSec;
     throw err;
   }
 
-  const calculatedDurationMin = Math.max(5, Math.round(elapsedSec / 60));
-  const durationMin = typeof payload.duration_min === 'number' && payload.duration_min >= 5
+  const calculatedDurationMin = Math.max(2, Math.round(elapsedSec / 60));
+  const durationMin = typeof payload.duration_min === 'number' && payload.duration_min >= 2
     ? payload.duration_min
     : calculatedDurationMin;
 
